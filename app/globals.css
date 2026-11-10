@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #FFF8F5;
+  --foreground: #1F2937;
+}
+
+body {
+  background-color: #FFF8F5;
+  color: #1F2937;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Scrollbar oculta para filtros horizontales en celular */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

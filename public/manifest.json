@@ -1,0 +1,18 @@
+{
+  "name": "Pegue y Monte CDE - Alquiler de Kits y Audiovisual",
+  "short_name": "Pegue y Monte",
+  "description": "Alquilá kits de decoración para fiestas y equipos audiovisuales en Ciudad del Este, Paraguay.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8F5",
+  "theme_color": "#FF4D7A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
