@@ -3,8 +3,11 @@ import { cookies } from 'next/headers';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { clearPinCookie } from '@/lib/pin-auth';
 
+export const dynamic = 'force-dynamic';
+
 const COOKIE_NAME = 'pym_admin_auth';
 const DEFAULT_NEGOCIO_ID = 'neg-pegue-y-monte-cde';
+const DEFAULT_EMAIL = 'pegueymontecde@gmail.com';
 
 async function getStoreCredentials() {
   const envEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
@@ -16,16 +19,31 @@ async function getStoreCredentials() {
 
   if (isSupabaseConfigured()) {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('negocios')
         .select('email_admin, pin_admin, whatsapp')
         .eq('id', DEFAULT_NEGOCIO_ID)
         .maybeSingle();
 
-      if (data) {
-        dbEmail = data.email_admin ? String(data.email_admin).trim().toLowerCase() : null;
+      if (!error && data) {
+        dbEmail = data.email_admin
+          ? String(data.email_admin).trim().toLowerCase()
+          : null;
         dbPin = data.pin_admin ? String(data.pin_admin).trim() : null;
         if (data.whatsapp) dbWhatsapp = String(data.whatsapp);
+      } else {
+        // Por si aún no corrieron el ALTER TABLE email_admin en Supabase
+        const { data: fallbackData } = await supabase
+          .from('negocios')
+          .select('pin_admin, whatsapp')
+          .eq('id', DEFAULT_NEGOCIO_ID)
+          .maybeSingle();
+        if (fallbackData) {
+          dbPin = fallbackData.pin_admin
+            ? String(fallbackData.pin_admin).trim()
+            : null;
+          if (fallbackData.whatsapp) dbWhatsapp = String(fallbackData.whatsapp);
+        }
       }
     } catch {
       // Fallback a variables de entorno o defaults
@@ -35,7 +53,10 @@ async function getStoreCredentials() {
   const validEmails = new Set<string>();
   if (envEmail) validEmails.add(envEmail);
   if (dbEmail) validEmails.add(dbEmail);
-  if (validEmails.size === 0) validEmails.add('pegueymontecde@gmail.com');
+  if (validEmails.size === 0) validEmails.add(DEFAULT_EMAIL);
+
+  const isDefaultEmail =
+    !envEmail && (!dbEmail || dbEmail === DEFAULT_EMAIL);
 
   const validPins = new Set<string>();
   if (envPin) validPins.add(envPin);
@@ -44,11 +65,11 @@ async function getStoreCredentials() {
 
   const sessionSecret = envPin || dbPin || '2026';
 
-  return { validEmails, validPins, dbWhatsapp, sessionSecret };
+  return { validEmails, validPins, dbWhatsapp, sessionSecret, isDefaultEmail };
 }
 
 export async function GET() {
-  const { sessionSecret } = await getStoreCredentials();
+  const { sessionSecret, isDefaultEmail } = await getStoreCredentials();
   const cookieStore = cookies();
   const session = cookieStore.get(COOKIE_NAME);
   const expectedToken = Buffer.from(`${COOKIE_NAME}:${sessionSecret}`).toString(
@@ -57,6 +78,7 @@ export async function GET() {
 
   return NextResponse.json({
     authenticated: session?.value === expectedToken,
+    isDefaultEmail,
   });
 }
 
@@ -66,7 +88,8 @@ export async function POST(request: NextRequest) {
     const email = String(body?.email || '').trim().toLowerCase();
     const pin = String(body?.pin || '').trim();
 
-    const { validEmails, validPins, sessionSecret } = await getStoreCredentials();
+    const { validEmails, validPins, sessionSecret } =
+      await getStoreCredentials();
 
     if (!email || !validEmails.has(email)) {
       return NextResponse.json(

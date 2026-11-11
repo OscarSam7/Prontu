@@ -36,6 +36,7 @@ export default function AdminGuard({
 }: AdminGuardProps) {
   const [checking, setChecking] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [isDefaultEmail, setIsDefaultEmail] = useState(false);
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -50,10 +51,11 @@ export default function AdminGuard({
   const [recSuccess, setRecSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(authEndpoint)
+    fetch(authEndpoint, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         setAuthenticated(Boolean(data?.authenticated));
+        setIsDefaultEmail(Boolean(data?.isDefaultEmail));
       })
       .catch(() => {
         setAuthenticated(false);
@@ -171,6 +173,22 @@ export default function AdminGuard({
 
           {!modoRecuperar ? (
             <form onSubmit={handleLogin} className="space-y-3 text-left">
+              {requireEmail && isDefaultEmail && (
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] space-y-1.5">
+                  <p>
+                    <strong>Primer ingreso:</strong> usá el correo inicial{' '}
+                    <code className="font-bold">pegueymontecde@gmail.com</code> y luego cambialo por tu Gmail en <strong>Mi Tienda</strong>.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setEmail('pegueymontecde@gmail.com')}
+                    className="px-2.5 py-1 rounded-lg bg-amber-200/70 hover:bg-amber-200 font-extrabold text-amber-950"
+                  >
+                    Usar pegueymontecde@gmail.com
+                  </button>
+                </div>
+              )}
+
               {requireEmail && (
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
