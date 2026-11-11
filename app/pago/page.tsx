@@ -352,11 +352,11 @@ export default function PagoPage() {
               <p>• Titular: <strong>Pegue y Monte CDE</strong></p>
               <div className="flex items-center justify-between gap-2 bg-white px-3 py-2 rounded-xl border border-pink-100">
                 <span>
-                  • Alias SIPAP (Celular): <strong className="text-gray-900">0983 637 780</strong>
+                  • Alias SIPAP: <strong className="text-gray-900">3233591</strong>
                 </span>
                 <button
                   type="button"
-                  onClick={() => navigator.clipboard?.writeText('0983637780')}
+                  onClick={() => navigator.clipboard?.writeText('3233591')}
                   className="px-2.5 py-1 rounded-lg bg-pink-50 text-brand-pink font-bold text-[11px] hover:bg-brand-pink hover:text-white transition"
                 >
                   Copiar
