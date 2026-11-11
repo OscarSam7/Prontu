@@ -36,10 +36,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={poppins.variable}>
-      <body className="font-sans bg-brand-bg text-gray-900 min-h-screen pb-24 antialiased">
+      <body className="font-sans bg-brand-bg text-gray-900 min-h-screen pb-20 antialiased">
         <AppProvider>
-          <div className="max-w-4xl mx-auto min-h-screen">{children}</div>
           <BottomNav />
+          <div className="max-w-4xl mx-auto min-h-screen">{children}</div>
         </AppProvider>
       </body>
     </html>
