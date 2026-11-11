@@ -980,6 +980,7 @@ export interface Reserva {
   garantia: number;
   metodoPago: 'transferencia' | 'bancard' | 'pix';
   comprobanteNombre?: string;
+  comprobanteUrl?: string;
   estado: EstadoReserva;
   estadoDevolucion?: EstadoDevolucion;
   itemsRotos?: string[];

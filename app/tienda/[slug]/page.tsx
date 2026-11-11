@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -39,6 +39,12 @@ export default function TiendaSuscriptorPage() {
   const [filtroActivo, setFiltroActivo] = useState<CategoriaFiltro>('Todos');
 
   const negocio = negocios.find((n) => n.slug === slug);
+
+  useEffect(() => {
+    if (negocio) {
+      document.title = `${negocio.nombre} | Alquiler de Kits`;
+    }
+  }, [negocio]);
 
   const kitsBase = useMemo(() => {
     if (!negocio) return [];
@@ -121,8 +127,16 @@ export default function TiendaSuscriptorPage() {
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-              <PartyPopper className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 overflow-hidden">
+              {negocio.logoUrl ? (
+                <img
+                  src={negocio.logoUrl}
+                  alt={negocio.nombre}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <PartyPopper className="w-6 h-6" />
+              )}
             </div>
             <div>
               <span className="text-[10px] font-extrabold uppercase tracking-wider bg-black/20 px-2 py-0.5 rounded-full">

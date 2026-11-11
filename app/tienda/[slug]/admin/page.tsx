@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -19,15 +19,25 @@ import {
   XCircle,
   ExternalLink,
   Upload,
+  Pencil,
+  FileImage,
+  X,
+  Palette,
+  QrCode,
 } from 'lucide-react';
 import {
+  Kit,
   formatGuaranies,
   PRECIOS_ROTURA,
   EstadoReserva,
   Reserva,
 } from '@/lib/kits';
 import { PLANES_SAAS } from '@/lib/saas';
-import { uploadKitImage, uploadKitVideo } from '@/lib/media';
+import {
+  uploadKitImage,
+  uploadKitVideo,
+  uploadMediaImage,
+} from '@/lib/media';
 import { useApp } from '@/lib/store';
 
 const FOTO_DEFAULT =
@@ -43,8 +53,10 @@ export default function TiendaAdminPage() {
     actualizarEstadoReserva,
     registrarDevolucion,
     agregarKit,
+    editarKit,
     toggleDisponibilidadKit,
     eliminarKit,
+    actualizarNegocio,
   } = useApp();
 
   const negocio = negocios.find((n) => n.slug === slug);
@@ -52,14 +64,18 @@ export default function TiendaAdminPage() {
   const [autenticado, setAutenticado] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
-  const [tab, setTab] = useState<'reservas' | 'kits'>('reservas');
+  const [tab, setTab] = useState<'reservas' | 'kits' | 'marca'>('reservas');
 
-  // Estado modal roto
+  // Modales reservas
   const [modalRotoReserva, setModalRotoReserva] = useState<Reserva | null>(null);
   const [itemsSeleccionados, setItemsSeleccionados] = useState<string[]>([]);
+  const [comprobantePreview, setComprobantePreview] = useState<Reserva | null>(
+    null
+  );
 
-  // Estado modal agregar kit rápido
-  const [modalNuevoKit, setModalNuevoKit] = useState(false);
+  // Modal agregar / modificar kit
+  const [modalKitOpen, setModalKitOpen] = useState(false);
+  const [editingKit, setEditingKit] = useState<Kit | null>(null);
   const [nombreKit, setNombreKit] = useState('');
   const [categoriaKit, setCategoriaKit] = useState('Cumple');
   const [precioPubKit, setPrecioPubKit] = useState('650000');
@@ -69,6 +85,28 @@ export default function TiendaAdminPage() {
   const [videoKit, setVideoKit] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [kitError, setKitError] = useState<string | null>(null);
+
+  // Marca & Cobros
+  const [marcaNombre, setMarcaNombre] = useState('');
+  const [marcaCiudad, setMarcaCiudad] = useState('');
+  const [marcaWhatsapp, setMarcaWhatsapp] = useState('');
+  const [marcaAlias, setMarcaAlias] = useState('');
+  const [marcaColor, setMarcaColor] = useState('#FF4D7A');
+  const [marcaLogo, setMarcaLogo] = useState<string | undefined>(undefined);
+  const [marcaQr, setMarcaQr] = useState<string | undefined>(undefined);
+  const [marcaGuardadaMsg, setMarcaGuardadaMsg] = useState<string | null>(null);
+  const [subiendoMarca, setSubiendoMarca] = useState(false);
+
+  useEffect(() => {
+    if (!negocio) return;
+    setMarcaNombre(negocio.nombre);
+    setMarcaCiudad(negocio.ciudad);
+    setMarcaWhatsapp(negocio.whatsapp);
+    setMarcaAlias(negocio.aliasSipap);
+    setMarcaColor(negocio.colorPrimario);
+    setMarcaLogo(negocio.logoUrl);
+    setMarcaQr(negocio.qrPagoUrl);
+  }, [negocio]);
 
   if (!negocio) {
     return (
@@ -119,7 +157,7 @@ export default function TiendaAdminPage() {
               {negocio.nombre}
             </h1>
             <p className="text-xs text-gray-500 mt-1">
-              Ingresá el PIN de tu tienda para gestionar reservas y kits.
+              Ingresá el PIN de tu tienda para gestionar reservas, kits y tu marca.
             </p>
           </div>
 
@@ -172,6 +210,34 @@ export default function TiendaAdminPage() {
     return acc;
   }, 0);
 
+  const openNuevoKit = () => {
+    setEditingKit(null);
+    setNombreKit('');
+    setCategoriaKit('Cumple');
+    setPrecioPubKit('650000');
+    setPrecioDecoKit('450000');
+    setDescKit('');
+    setFotosKit([FOTO_DEFAULT]);
+    setVideoKit('');
+    setKitError(null);
+    setModalKitOpen(true);
+  };
+
+  const openEditarKit = (k: Kit) => {
+    setEditingKit(k);
+    setNombreKit(k.nombre);
+    setCategoriaKit(k.categoria);
+    setPrecioPubKit(String(k.precioPublico));
+    setPrecioDecoKit(String(k.precioDecoradora));
+    setDescKit(k.descripcion);
+    setFotosKit(k.fotos.length > 0 ? k.fotos : [FOTO_DEFAULT]);
+    setVideoKit(
+      k.videoUrl && !k.videoUrl.includes('dQw4w9WgXcQ') ? k.videoUrl : ''
+    );
+    setKitError(null);
+    setModalKitOpen(true);
+  };
+
   const handleSubirFotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -197,48 +263,103 @@ export default function TiendaAdminPage() {
     setSubiendo(false);
   };
 
-  const handleCrearKit = (e: React.FormEvent) => {
+  const handleGuardarKit = (e: React.FormEvent) => {
     e.preventDefault();
     setKitError(null);
-    const limite = PLANES_SAAS[negocio.plan].limiteKits;
-    if (limite && misKits.length >= limite) {
-      setKitError(
-        `Tu ${PLANES_SAAS[negocio.plan].nombre} permite hasta ${limite} kits. Contactá al Super Admin para pasar al Plan Pro ilimitado.`
-      );
-      return;
-    }
     if (!nombreKit.trim()) return;
 
-    agregarKit({
-      negocioId: negocio.id,
-      nombre: nombreKit.trim(),
-      categoria: categoriaKit,
-      grupo:
-        categoriaKit === 'Sonido' ||
-        categoriaKit === 'Luces' ||
-        categoriaKit === 'Pantallas'
-          ? 'Audiovisual'
-          : 'Deco',
-      precioPublico: Number(precioPubKit) || 650000,
-      precioDecoradora: Number(precioDecoKit) || 450000,
-      garantia: 300000,
-      descripcion:
-        descKit.trim() || 'Kit listo para montar en 15 minutos sin herramientas.',
-      incluye: [
-        'Panel circular + 3 cilindros con fundas',
-        'Arco desmontable y adornos temáticos',
-      ],
-      noIncluye: ['Globos ni dulces'],
-      fotos: fotosKit,
-      videoUrl: videoKit.trim() || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-      disponible: true,
-    });
+    const grupo =
+      categoriaKit === 'Sonido' ||
+      categoriaKit === 'Luces' ||
+      categoriaKit === 'Pantallas'
+        ? 'Audiovisual'
+        : 'Deco';
 
-    setNombreKit('');
-    setDescKit('');
-    setFotosKit([FOTO_DEFAULT]);
-    setVideoKit('');
-    setModalNuevoKit(false);
+    if (editingKit) {
+      editarKit({
+        ...editingKit,
+        negocioId: negocio.id,
+        nombre: nombreKit.trim(),
+        categoria: categoriaKit,
+        grupo,
+        precioPublico: Number(precioPubKit) || editingKit.precioPublico,
+        precioDecoradora: Number(precioDecoKit) || editingKit.precioDecoradora,
+        descripcion: descKit.trim() || editingKit.descripcion,
+        fotos: fotosKit,
+        videoUrl: videoKit.trim() || editingKit.videoUrl,
+      });
+    } else {
+      const limite = PLANES_SAAS[negocio.plan].limiteKits;
+      if (limite && misKits.length >= limite) {
+        setKitError(
+          `Tu ${PLANES_SAAS[negocio.plan].nombre} permite hasta ${limite} kits. Contactá al Super Admin para pasar al Plan Pro ilimitado.`
+        );
+        return;
+      }
+
+      agregarKit({
+        negocioId: negocio.id,
+        nombre: nombreKit.trim(),
+        categoria: categoriaKit,
+        grupo,
+        precioPublico: Number(precioPubKit) || 650000,
+        precioDecoradora: Number(precioDecoKit) || 450000,
+        garantia: grupo === 'Audiovisual' ? 500000 : 300000,
+        descripcion:
+          descKit.trim() ||
+          'Kit listo para montar en 15 minutos sin herramientas.',
+        incluye: [
+          'Panel circular + 3 cilindros con fundas',
+          'Arco desmontable y adornos temáticos',
+        ],
+        noIncluye: ['Globos ni dulces'],
+        fotos: fotosKit,
+        videoUrl: videoKit.trim() || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        disponible: true,
+      });
+    }
+
+    setModalKitOpen(false);
+  };
+
+  const handleSubirLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSubiendoMarca(true);
+    try {
+      const url = await uploadMediaImage(file, 'logos');
+      setMarcaLogo(url);
+    } finally {
+      setSubiendoMarca(false);
+    }
+  };
+
+  const handleSubirQrCobro = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSubiendoMarca(true);
+    try {
+      const url = await uploadMediaImage(file, 'qr-pagos');
+      setMarcaQr(url);
+    } finally {
+      setSubiendoMarca(false);
+    }
+  };
+
+  const handleGuardarMarca = (e: React.FormEvent) => {
+    e.preventDefault();
+    actualizarNegocio({
+      ...negocio,
+      nombre: marcaNombre.trim() || negocio.nombre,
+      ciudad: marcaCiudad.trim() || negocio.ciudad,
+      whatsapp: marcaWhatsapp.trim() || negocio.whatsapp,
+      aliasSipap: marcaAlias.trim(),
+      colorPrimario: marcaColor,
+      logoUrl: marcaLogo,
+      qrPagoUrl: marcaQr,
+    });
+    setMarcaGuardadaMsg('¡Datos de tu marca y QR guardados correctamente!');
+    setTimeout(() => setMarcaGuardadaMsg(null), 4000);
   };
 
   const toggleItemRoto = (id: string) => {
@@ -326,8 +447,8 @@ export default function TiendaAdminPage() {
         </div>
       </section>
 
-      {/* Tabs Reservas / Mis Kits */}
-      <div className="flex items-center gap-2">
+      {/* Tabs Reservas / Mis Kits / Mi Marca & Cobros */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setTab('reservas')}
@@ -350,9 +471,21 @@ export default function TiendaAdminPage() {
         >
           Mis Kits ({misKits.length})
         </button>
+        <button
+          type="button"
+          onClick={() => setTab('marca')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-1.5 ${
+            tab === 'marca'
+              ? 'bg-brand-pink text-white shadow'
+              : 'bg-white text-gray-600 border border-pink-100'
+          }`}
+        >
+          <Palette className="w-3.5 h-3.5" />
+          Mi Marca y QR
+        </button>
       </div>
 
-      {tab === 'reservas' ? (
+      {tab === 'reservas' && (
         <section className="bg-white rounded-3xl p-4 sm:p-5 shadow-card border border-pink-100 space-y-3">
           <h2 className="font-extrabold text-gray-900 text-base">
             Reservas de {negocio.nombre}
@@ -389,6 +522,16 @@ export default function TiendaAdminPage() {
                       <p className="text-emerald-700 font-bold">
                         Seña: {formatGuaranies(r.sena50)}
                       </p>
+                      {r.comprobanteUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setComprobantePreview(r)}
+                          className="mt-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-[11px]"
+                        >
+                          <FileImage className="w-3.5 h-3.5" />
+                          Ver Comprobante
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -444,7 +587,9 @@ export default function TiendaAdminPage() {
             </div>
           )}
         </section>
-      ) : (
+      )}
+
+      {tab === 'kits' && (
         <section className="bg-white rounded-3xl p-4 sm:p-5 shadow-card border border-pink-100 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-extrabold text-gray-900 text-base">
@@ -452,10 +597,7 @@ export default function TiendaAdminPage() {
             </h2>
             <button
               type="button"
-              onClick={() => {
-                setKitError(null);
-                setModalNuevoKit(true);
-              }}
+              onClick={openNuevoKit}
               className="px-3.5 py-2 rounded-2xl bg-brand-pink text-white text-xs font-extrabold flex items-center gap-1 shadow"
             >
               <Plus className="w-4 h-4" /> Agregar Kit
@@ -466,7 +608,7 @@ export default function TiendaAdminPage() {
             {misKits.map((k) => (
               <div
                 key={k.id}
-                className="p-3 rounded-2xl bg-brand-bg border border-pink-100 flex items-center justify-between gap-3"
+                className="p-3 rounded-2xl bg-brand-bg border border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <img
@@ -485,7 +627,7 @@ export default function TiendaAdminPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => toggleDisponibilidadKit(k.id)}
@@ -507,6 +649,13 @@ export default function TiendaAdminPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => openEditarKit(k)}
+                    className="px-2.5 py-1.5 rounded-xl bg-white border border-pink-200 text-gray-700 text-xs font-extrabold flex items-center gap-1"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Modificar
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => eliminarKit(k.id)}
                     className="p-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-200"
                     title="Borrar kit"
@@ -520,14 +669,156 @@ export default function TiendaAdminPage() {
         </section>
       )}
 
-      {/* Modal Agregar Kit Propio */}
-      {modalNuevoKit && (
+      {tab === 'marca' && (
+        <section className="bg-white rounded-3xl p-4 sm:p-5 shadow-card border border-pink-100 space-y-4">
+          <div>
+            <h2 className="font-extrabold text-gray-900 text-base">
+              Personalizá tu Tienda y QR de Cobros
+            </h2>
+            <p className="text-xs text-gray-500">
+              Subí el logo de tu negocio y la imagen de tu QR de banco / PIX para que tus clientes transfieran la seña directo.
+            </p>
+          </div>
+
+          <form onSubmit={handleGuardarMarca} className="space-y-3.5 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Nombre de tu Tienda
+                </label>
+                <input
+                  type="text"
+                  value={marcaNombre}
+                  onChange={(e) => setMarcaNombre(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Ciudad
+                </label>
+                <input
+                  type="text"
+                  value={marcaCiudad}
+                  onChange={(e) => setMarcaCiudad(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  WhatsApp
+                </label>
+                <input
+                  type="text"
+                  value={marcaWhatsapp}
+                  onChange={(e) => setMarcaWhatsapp(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Alias SIPAP
+                </label>
+                <input
+                  type="text"
+                  value={marcaAlias}
+                  onChange={(e) => setMarcaAlias(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-bold"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Color Principal
+                </label>
+                <input
+                  type="color"
+                  value={marcaColor}
+                  onChange={(e) => setMarcaColor(e.target.value)}
+                  className="w-full h-10 rounded-xl border border-pink-100 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* Subida de Logo y QR de Cobro */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="p-3.5 rounded-2xl bg-brand-bg border border-pink-100 space-y-2 text-center">
+                <span className="font-extrabold text-gray-800 block">
+                  Logo de tu Negocio
+                </span>
+                {marcaLogo && (
+                  <img
+                    src={marcaLogo}
+                    alt="Logo tienda"
+                    className="w-20 h-20 rounded-2xl object-cover mx-auto border border-pink-200"
+                  />
+                )}
+                <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-pink-200 text-brand-pink font-bold cursor-pointer">
+                  <Upload className="w-3.5 h-3.5" />
+                  {subiendoMarca ? 'Subiendo...' : 'Subir Logo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSubirLogo}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-brand-bg border border-pink-100 space-y-2 text-center">
+                <span className="font-extrabold text-gray-800 flex items-center justify-center gap-1">
+                  <QrCode className="w-4 h-4 text-brand-teal" />
+                  Imagen QR de Transferencia / PIX
+                </span>
+                {marcaQr && (
+                  <img
+                    src={marcaQr}
+                    alt="QR cobro"
+                    className="w-24 h-24 rounded-xl object-contain mx-auto bg-white p-1 border border-pink-200"
+                  />
+                )}
+                <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-teal-200 text-brand-teal font-bold cursor-pointer">
+                  <Upload className="w-3.5 h-3.5" />
+                  {subiendoMarca ? 'Subiendo...' : 'Subir Foto de QR'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSubirQrCobro}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {marcaGuardadaMsg && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-center">
+                {marcaGuardadaMsg}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={subiendoMarca}
+              className="w-full py-3.5 rounded-2xl bg-brand-pink hover:bg-brand-pinkDark text-white font-extrabold shadow"
+            >
+              Guardar Marca y Cobros
+            </button>
+          </form>
+        </section>
+      )}
+
+      {/* Modal Agregar / Modificar Kit Propio */}
+      {modalKitOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-3 my-6">
             <h3 className="text-lg font-extrabold text-gray-900">
-              Nuevo Kit en {negocio.nombre}
+              {editingKit
+                ? `Modificar Kit: ${editingKit.nombre}`
+                : `Nuevo Kit en ${negocio.nombre}`}
             </h3>
-            <form onSubmit={handleCrearKit} className="space-y-3 text-xs">
+            <form onSubmit={handleGuardarKit} className="space-y-3 text-xs">
               <input
                 type="text"
                 required
@@ -572,6 +863,13 @@ export default function TiendaAdminPage() {
                 placeholder="Descripción del kit..."
                 className="w-full px-3.5 py-2 rounded-xl bg-brand-bg border border-pink-100 font-medium"
               />
+              <input
+                type="text"
+                value={videoKit}
+                onChange={(e) => setVideoKit(e.target.value)}
+                placeholder="Link de YouTube / video tutorial (opcional)"
+                className="w-full px-3.5 py-2 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+              />
               <div className="flex flex-wrap gap-2">
                 <label className="px-3 py-2 rounded-xl bg-pink-50 text-brand-pink font-bold cursor-pointer inline-flex items-center gap-1">
                   <Upload className="w-3.5 h-3.5" />
@@ -595,13 +893,11 @@ export default function TiendaAdminPage() {
                   />
                 </label>
               </div>
-              {kitError && (
-                <p className="text-rose-600 font-bold">{kitError}</p>
-              )}
+              {kitError && <p className="text-rose-600 font-bold">{kitError}</p>}
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => setModalNuevoKit(false)}
+                  onClick={() => setModalKitOpen(false)}
                   className="py-3 rounded-2xl bg-gray-100 text-gray-700 font-bold"
                 >
                   Cancelar
@@ -611,10 +907,67 @@ export default function TiendaAdminPage() {
                   disabled={subiendo}
                   className="py-3 rounded-2xl bg-brand-pink text-white font-extrabold"
                 >
-                  Guardar Kit
+                  {editingKit ? 'Guardar Cambios' : 'Guardar Kit'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Vista Previa Comprobante */}
+      {comprobantePreview && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+              <div>
+                <h3 className="font-extrabold text-gray-900 text-sm">
+                  Comprobante • {comprobantePreview.id}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {comprobantePreview.clienteNombre} • Seña:{' '}
+                  {formatGuaranies(comprobantePreview.sena50)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setComprobantePreview(null)}
+                className="p-1.5 rounded-xl bg-gray-100 text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {comprobantePreview.comprobanteUrl?.startsWith('data:application/pdf') ||
+            comprobantePreview.comprobanteUrl?.endsWith('.pdf') ? (
+              <div className="p-5 bg-brand-bg rounded-2xl text-center space-y-2">
+                <p className="text-xs font-bold text-gray-700">
+                  Comprobante en PDF: {comprobantePreview.comprobanteNombre}
+                </p>
+                <a
+                  href={comprobantePreview.comprobanteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block px-4 py-2 rounded-xl bg-brand-pink text-white text-xs font-extrabold"
+                >
+                  Abrir PDF
+                </a>
+              </div>
+            ) : (
+              <img
+                src={comprobantePreview.comprobanteUrl}
+                alt="Comprobante"
+                className="w-full max-h-96 object-contain rounded-2xl bg-gray-100 border border-gray-200"
+              />
+            )}
+
+            <button
+              type="button"
+              onClick={() => setComprobantePreview(null)}
+              className="w-full py-3 rounded-2xl bg-gray-900 text-white font-bold text-xs"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       )}

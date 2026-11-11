@@ -19,6 +19,7 @@ export default function TiendaPagoPage() {
       negocioNombre={negocio?.nombre || 'Tienda'}
       whatsapp={negocio?.whatsapp || '0983 637 780'}
       aliasSipap={negocio?.aliasSipap || negocio?.whatsapp || ''}
+      qrPagoUrl={negocio?.qrPagoUrl}
     />
   );
 }

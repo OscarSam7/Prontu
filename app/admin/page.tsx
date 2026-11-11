@@ -14,6 +14,8 @@ import {
   Box,
   ListChecks,
   Wrench,
+  FileImage,
+  X,
 } from 'lucide-react';
 import {
   formatGuaranies,
@@ -32,6 +34,7 @@ export default function AdminDashboardPage() {
 
   const [modalRotoReserva, setModalRotoReserva] = useState<Reserva | null>(null);
   const [itemsSeleccionados, setItemsSeleccionados] = useState<string[]>([]);
+  const [comprobantePreview, setComprobantePreview] = useState<Reserva | null>(null);
 
   const hoyStr = new Date().toISOString().split('T')[0];
 
@@ -251,6 +254,20 @@ export default function AdminDashboardPage() {
                     <p className="text-teal-800 font-semibold">
                       Garantía: {formatGuaranies(r.garantia)}
                     </p>
+                    {r.comprobanteUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setComprobantePreview(r)}
+                        className="mt-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-[11px] hover:bg-blue-100"
+                      >
+                        <FileImage className="w-3.5 h-3.5" />
+                        Ver Comprobante
+                      </button>
+                    ) : r.comprobanteNombre ? (
+                      <span className="block text-[10px] text-gray-500 mt-1">
+                        Archivo: {r.comprobanteNombre}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 
@@ -463,6 +480,63 @@ export default function AdminDashboardPage() {
                 Aplicar Descuento
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Vista Previa Comprobante de Transferencia */}
+      {comprobantePreview && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+              <div>
+                <h3 className="font-extrabold text-gray-900 text-sm">
+                  Comprobante • {comprobantePreview.id}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {comprobantePreview.clienteNombre} • Seña:{' '}
+                  {formatGuaranies(comprobantePreview.sena50)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setComprobantePreview(null)}
+                className="p-1.5 rounded-xl bg-gray-100 text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {comprobantePreview.comprobanteUrl?.startsWith('data:application/pdf') ||
+            comprobantePreview.comprobanteUrl?.endsWith('.pdf') ? (
+              <div className="p-5 bg-brand-bg rounded-2xl text-center space-y-2">
+                <p className="text-xs font-bold text-gray-700">
+                  Comprobante en PDF: {comprobantePreview.comprobanteNombre}
+                </p>
+                <a
+                  href={comprobantePreview.comprobanteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block px-4 py-2 rounded-xl bg-brand-pink text-white text-xs font-extrabold"
+                >
+                  Abrir PDF
+                </a>
+              </div>
+            ) : (
+              <img
+                src={comprobantePreview.comprobanteUrl}
+                alt="Comprobante de transferencia"
+                className="w-full max-h-96 object-contain rounded-2xl bg-gray-100 border border-gray-200"
+              />
+            )}
+
+            <button
+              type="button"
+              onClick={() => setComprobantePreview(null)}
+              className="w-full py-3 rounded-2xl bg-gray-900 text-white font-bold text-xs"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       )}

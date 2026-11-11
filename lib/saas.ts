@@ -42,6 +42,8 @@ export interface Negocio {
   whatsapp: string;
   aliasSipap: string;
   colorPrimario: string;
+  logoUrl?: string;
+  qrPagoUrl?: string;
   plan: PlanSaaS;
   precioMensual: number;
   estado: EstadoSuscripcion;

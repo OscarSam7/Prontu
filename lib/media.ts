@@ -47,13 +47,16 @@ const compressImageToBlob = (file: File, maxWidth = 1000): Promise<Blob> =>
     img.src = objectUrl;
   });
 
-export async function uploadKitImage(file: File): Promise<string> {
+export async function uploadMediaImage(
+  file: File,
+  folder: 'fotos' | 'comprobantes' | 'logos' | 'qr-pagos' = 'fotos'
+): Promise<string> {
   const compressed = await compressImageToBlob(file);
 
   if (isSupabaseConfigured()) {
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const path = `fotos/${Date.now()}-${safeName}.jpg`;
+      const path = `${folder}/${Date.now()}-${safeName}.jpg`;
       const { error } = await supabase.storage
         .from(STORAGE_BUCKET)
         .upload(path, compressed, { contentType: 'image/jpeg', upsert: true });
@@ -68,6 +71,37 @@ export async function uploadKitImage(file: File): Promise<string> {
   }
 
   return fileToDataUrl(compressed);
+}
+
+export async function uploadKitImage(file: File): Promise<string> {
+  return uploadMediaImage(file, 'fotos');
+}
+
+export async function uploadComprobanteFile(file: File): Promise<string> {
+  if (file.type.startsWith('image/')) {
+    return uploadMediaImage(file, 'comprobantes');
+  }
+
+  if (isSupabaseConfigured()) {
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `comprobantes/${Date.now()}-${safeName}`;
+      const { error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(path, file, {
+          contentType: file.type || 'application/pdf',
+          upsert: true,
+        });
+      if (!error) {
+        const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+        if (data?.publicUrl) return data.publicUrl;
+      }
+    } catch {
+      // Fallback abajo
+    }
+  }
+
+  return fileToDataUrl(file);
 }
 
 export async function uploadKitVideo(

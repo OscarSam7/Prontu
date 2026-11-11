@@ -50,7 +50,8 @@ interface AppContextType {
    confirmarReservaYPago: (
     metodoPago: 'transferencia' | 'bancard' | 'pix',
     comprobanteNombre?: string,
-    negocioId?: string
+    negocioId?: string,
+    comprobanteUrl?: string
   ) => Reserva;
   getKitsByNegocio: (negocioId?: string) => Kit[];
   getReservasByNegocio: (negocioId?: string) => Reserva[];
@@ -222,6 +223,7 @@ const reservaToRow = (r: Reserva) => ({
   garantia: r.garantia,
   metodo_pago: r.metodoPago,
   comprobante_nombre: r.comprobanteNombre ?? null,
+  comprobante_url: r.comprobanteUrl ?? null,
   estado: r.estado,
   estado_devolucion: r.estadoDevolucion ?? null,
   items_rotos: r.itemsRotos ?? [],
@@ -252,6 +254,7 @@ const rowToReserva = (row: any): Reserva => ({
   garantia: row.garantia,
   metodoPago: row.metodo_pago,
   comprobanteNombre: row.comprobante_nombre ?? undefined,
+  comprobanteUrl: row.comprobante_url ?? undefined,
   estado: row.estado,
   estadoDevolucion: row.estado_devolucion ?? undefined,
   itemsRotos: row.items_rotos ?? [],
@@ -269,6 +272,8 @@ const negocioToRow = (n: Negocio) => ({
   whatsapp: n.whatsapp,
   alias_sipap: n.aliasSipap,
   color_primario: n.colorPrimario,
+  logo_url: n.logoUrl ?? null,
+  qr_pago_url: n.qrPagoUrl ?? null,
   plan: n.plan,
   precio_mensual: n.precioMensual,
   estado: n.estado,
@@ -286,6 +291,8 @@ const rowToNegocio = (row: any): Negocio => ({
   whatsapp: row.whatsapp,
   aliasSipap: row.alias_sipap || '',
   colorPrimario: row.color_primario || '#FF4D7A',
+  logoUrl: row.logo_url ?? undefined,
+  qrPagoUrl: row.qr_pago_url ?? undefined,
   plan: row.plan,
   precioMensual: row.precio_mensual,
   estado: row.estado,
@@ -510,7 +517,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const confirmarReservaYPago = (
     metodoPago: 'transferencia' | 'bancard' | 'pix',
     comprobanteNombre?: string,
-    negocioId = DEFAULT_NEGOCIO_ID
+    negocioId = DEFAULT_NEGOCIO_ID,
+    comprobanteUrl?: string
   ): Reserva => {
     const kit = kits.find((k) => k.id === draft.kitId) || kits[0];
     const precioBase = esDecoradora ? kit.precioDecoradora : kit.precioPublico;
@@ -547,6 +555,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       garantia: kit.garantia,
       metodoPago,
       comprobanteNombre,
+      comprobanteUrl,
       estado: 'Pagó 50%',
       creadoEn: hoy,
     };

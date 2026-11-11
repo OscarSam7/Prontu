@@ -22,6 +22,7 @@ import {
   DEFAULT_NEGOCIO_ID,
   Reserva,
 } from '@/lib/kits';
+import { uploadComprobanteFile } from '@/lib/media';
 import { useApp } from '@/lib/store';
 
 interface PagoViewProps {
@@ -30,6 +31,7 @@ interface PagoViewProps {
   negocioNombre?: string;
   whatsapp?: string;
   aliasSipap?: string;
+  qrPagoUrl?: string;
 }
 
 export default function PagoView({
@@ -38,9 +40,18 @@ export default function PagoView({
   negocioNombre = 'Pegue y Monte CDE',
   whatsapp = '0983 637 780',
   aliasSipap = '3233591',
+  qrPagoUrl,
 }: PagoViewProps) {
-  const { getKitsByNegocio, esDecoradora, draft, confirmarReservaYPago } =
-    useApp();
+  const {
+    negocios,
+    getKitsByNegocio,
+    esDecoradora,
+    draft,
+    confirmarReservaYPago,
+  } = useApp();
+
+  const negocioMatch = negocios.find((n) => n.id === negocioId);
+  const qrCobro = qrPagoUrl || negocioMatch?.qrPagoUrl;
 
   const storeKits = getKitsByNegocio(negocioId);
   const kit = storeKits.find((k) => k.id === draft.kitId) || storeKits[0];
@@ -56,16 +67,24 @@ export default function PagoView({
     'transferencia'
   );
   const [comprobanteFile, setComprobanteFile] = useState<string>('');
+  const [comprobanteUrl, setComprobanteUrl] = useState<string>('');
+  const [subiendoComprobante, setSubiendoComprobante] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const [reservaConfirmada, setReservaConfirmada] = useState<Reserva | null>(
     null
   );
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setComprobanteFile(file.name);
+    if (!file) return;
+    setComprobanteFile(file.name);
+    setSubiendoComprobante(true);
+    try {
+      const url = await uploadComprobanteFile(file);
+      setComprobanteUrl(url);
+    } finally {
+      setSubiendoComprobante(false);
     }
   };
 
@@ -73,8 +92,9 @@ export default function PagoView({
     setProcesando(true);
     const nueva = confirmarReservaYPago(
       metodo,
-      comprobanteFile || 'comprobante_verificado.jpg',
-      negocioId
+      comprobanteFile || undefined,
+      negocioId,
+      comprobanteUrl || undefined
     );
 
     const payloadQR = JSON.stringify({
@@ -404,6 +424,19 @@ export default function PagoView({
               </p>
             </div>
 
+            {qrCobro && (
+              <div className="bg-white p-3 rounded-2xl border border-pink-100 text-center space-y-1.5">
+                <span className="text-[11px] font-bold text-gray-600 block">
+                  Escaneá este QR para transferir la seña:
+                </span>
+                <img
+                  src={qrCobro}
+                  alt={`QR de cobro ${negocioNombre}`}
+                  className="w-40 h-40 object-contain mx-auto rounded-xl"
+                />
+              </div>
+            )}
+
             <div className="pt-2">
               <label className="block text-xs font-bold text-gray-800 mb-1.5">
                 Subir comprobante de transferencia (Foto o PDF):
@@ -411,8 +444,10 @@ export default function PagoView({
               <label className="flex items-center justify-center gap-2 p-3.5 rounded-2xl border-2 border-dashed border-brand-pink/50 bg-white cursor-pointer hover:bg-pink-50/40 transition text-xs font-bold text-brand-pink">
                 <Upload className="w-4 h-4" />
                 <span>
-                  {comprobanteFile
-                    ? `Archivo cargado: ${comprobanteFile}`
+                  {subiendoComprobante
+                    ? 'Subiendo comprobante...'
+                    : comprobanteFile
+                    ? `Comprobante listo: ${comprobanteFile}`
                     : 'Seleccionar comprobante del celular'}
                 </span>
                 <input
@@ -422,6 +457,14 @@ export default function PagoView({
                   className="hidden"
                 />
               </label>
+              {comprobanteUrl &&
+              (comprobanteUrl.startsWith('data:image') ||
+                comprobanteUrl.includes('fotos/') ||
+                comprobanteUrl.includes('comprobantes/')) ? (
+                <p className="text-[11px] text-emerald-700 font-semibold mt-1 text-center">
+                  ✓ Imagen del comprobante adjuntada para verificación del Admin
+                </p>
+              ) : null}
             </div>
           </div>
         )}
