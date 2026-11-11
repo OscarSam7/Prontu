@@ -17,12 +17,14 @@ import {
   X,
   Calendar,
   CreditCard,
+  Settings,
 } from 'lucide-react';
 import { formatGuaranies } from '@/lib/kits';
 import {
   Negocio,
   PlanSaaS,
   EstadoSuscripcion,
+  SaasConfig,
   PLANES_SAAS,
   slugifyNegocio,
 } from '@/lib/saas';
@@ -60,6 +62,8 @@ export default function SuperAdminPage() {
   const {
     negocios,
     pagosSuscripcion,
+    saasConfig,
+    actualizarSaasConfig,
     crearNegocio,
     actualizarNegocio,
     cambiarEstadoNegocio,
@@ -75,6 +79,8 @@ export default function SuperAdminPage() {
   const [metodoPago, setMetodoPago] = useState<
     'transferencia' | 'bancard' | 'pix' | 'efectivo'
   >('transferencia');
+  const [modalConfigOpen, setModalConfigOpen] = useState(false);
+  const [cfgForm, setCfgForm] = useState<SaasConfig>(saasConfig);
 
   // Métricas SaaS
   const activas = negocios.filter((n) => n.estado === 'activo');
@@ -160,7 +166,7 @@ export default function SuperAdminPage() {
       `Te escribimos por tu sistema *${n.nombre}* (${PLANES_SAAS[n.plan].nombre}).`,
       `📅 Tu suscripción vence el *${n.fechaVencimiento}*.`,
       `💰 Abono mensual: *${formatGuaranies(n.precioMensual)}*`,
-      `Podés renovar por transferencia al Alias *3233591* y enviarnos tu comprobante por acá. ¡Gracias!`,
+      `Podés renovar por transferencia al Alias *${saasConfig.aliasCobroSaaS}* y enviarnos tu comprobante por acá. ¡Gracias!`,
     ].join('\n');
 
     window.open(
@@ -186,6 +192,17 @@ export default function SuperAdminPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setCfgForm(saasConfig);
+              setModalConfigOpen(true);
+            }}
+            className="px-3.5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-gray-900 font-extrabold text-xs flex items-center gap-1.5 transition"
+          >
+            <Settings className="w-4 h-4" />
+            Editar Venta / WA
+          </button>
           <Link
             href="/vender"
             className="px-3.5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center gap-1.5 transition"
@@ -756,6 +773,146 @@ export default function SuperAdminPage() {
                 Confirmar Pago
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Página de Venta (/vender) y WhatsApp de Super Admin */}
+      {modalConfigOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4 my-6">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h2 className="text-lg font-extrabold text-gray-900">
+                Editar Página de Venta &amp; WhatsApp
+              </h2>
+              <button
+                type="button"
+                onClick={() => setModalConfigOpen(false)}
+                className="p-1.5 rounded-xl bg-gray-100 text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                actualizarSaasConfig(cfgForm);
+                setModalConfigOpen(false);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    WhatsApp Soporte / Ventas *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={cfgForm.whatsappSoporte}
+                    onChange={(e) =>
+                      setCfgForm({ ...cfgForm, whatsappSoporte: e.target.value })
+                    }
+                    placeholder="0983 637 780"
+                    className="w-full px-3 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    Alias SIPAP (Cobros SaaS)
+                  </label>
+                  <input
+                    type="text"
+                    value={cfgForm.aliasCobroSaaS}
+                    onChange={(e) =>
+                      setCfgForm({ ...cfgForm, aliasCobroSaaS: e.target.value })
+                    }
+                    placeholder="3233591"
+                    className="w-full px-3 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Texto del botón de WhatsApp
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={cfgForm.textoBotonWhatsapp}
+                  onChange={(e) =>
+                    setCfgForm({
+                      ...cfgForm,
+                      textoBotonWhatsapp: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Mensaje prearmado al abrir WhatsApp
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={cfgForm.mensajeSoporte}
+                  onChange={(e) =>
+                    setCfgForm({ ...cfgForm, mensajeSoporte: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Título principal en /vender
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={cfgForm.tituloVenta}
+                  onChange={(e) =>
+                    setCfgForm({ ...cfgForm, tituloVenta: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Subtítulo en /vender
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={cfgForm.subtituloVenta}
+                  onChange={(e) =>
+                    setCfgForm({ ...cfgForm, subtituloVenta: e.target.value })
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setModalConfigOpen(false)}
+                  className="py-3 rounded-2xl bg-gray-100 text-gray-700 font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="py-3 rounded-2xl bg-brand-pink hover:bg-brand-pinkDark text-white font-extrabold shadow"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

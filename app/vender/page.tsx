@@ -18,7 +18,14 @@ import { PLANES_SAAS, PlanSaaS, Negocio, slugifyNegocio } from '@/lib/saas';
 import { useApp } from '@/lib/store';
 
 export default function VenderSaaSPage() {
-  const { crearNegocio } = useApp();
+  const { crearNegocio, saasConfig } = useApp();
+
+  const cleanWa = saasConfig.whatsappSoporte.replace(/\D/g, '');
+  const intlWa = cleanWa.startsWith('595')
+    ? cleanWa
+    : cleanWa.startsWith('0')
+    ? `595${cleanWa.slice(1)}`
+    : `595${cleanWa}`;
 
   const [nombreNegocio, setNombreNegocio] = useState('');
   const [duenoNombre, setDuenoNombre] = useState('');
@@ -130,10 +137,10 @@ export default function VenderSaaSPage() {
           <Sparkles className="w-4 h-4" /> Sistema #1 en Paraguay para Alquiler de Fiestas
         </span>
         <h1 className="text-2xl sm:text-4xl font-extrabold leading-tight">
-          Tené tu propia App Web de Pegue y Monte y Audiovisual en 1 minuto
+          {saasConfig.tituloVenta}
         </h1>
         <p className="text-sm text-pink-50 max-w-2xl">
-          Dejá de responder precios uno por uno por WhatsApp. Tus clientes ven tus kits, eligen fecha en calendario, pagan la seña del 50% y reciben su código QR automáticamente.
+          {saasConfig.subtituloVenta}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-bold">
@@ -325,16 +332,26 @@ export default function VenderSaaSPage() {
           </button>
         </form>
 
-        <div className="pt-2 border-t border-gray-100 text-center">
+        <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
           <a
-            href="https://wa.me/595983637780?text=Hola!%20Quiero%20consultar%20por%20el%20sistema%20Pegue%20y%20Monte"
+            href={`https://wa.me/${intlWa}?text=${encodeURIComponent(
+              saasConfig.mensajeSoporte
+            )}`}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:underline"
           >
             <Send className="w-3.5 h-3.5" />
-            ¿Tenés dudas? Escribinos por WhatsApp (0983 637 780)
+            {saasConfig.textoBotonWhatsapp} ({saasConfig.whatsappSoporte})
           </a>
+
+          <Link
+            href="/super-admin"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-extrabold transition shadow-sm"
+          >
+            <Crown className="w-3.5 h-3.5 text-amber-300" />
+            Ir al Panel Super Admin
+          </Link>
         </div>
       </section>
     </main>

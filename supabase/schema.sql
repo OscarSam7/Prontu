@@ -196,3 +196,20 @@ VALUES (
   '2026'
 )
 ON CONFLICT (slug) DO NOTHING;
+
+-- 6. Configuración editable de la Página de Venta (/vender) y WhatsApp de Super Admin
+CREATE TABLE IF NOT EXISTS config_saas (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  whatsapp_soporte TEXT NOT NULL DEFAULT '0983 637 780',
+  texto_boton_whatsapp TEXT NOT NULL DEFAULT '¿Tenés dudas? Escribinos por WhatsApp',
+  mensaje_soporte TEXT NOT NULL DEFAULT 'Hola! Quiero consultar por el sistema Pegue y Monte',
+  alias_cobro_saas TEXT NOT NULL DEFAULT '3233591',
+  titulo_venta TEXT NOT NULL DEFAULT 'Tené tu propia App Web de Pegue y Monte y Audiovisual en 1 minuto',
+  subtitulo_venta TEXT NOT NULL DEFAULT 'Dejá de responder precios uno por uno por WhatsApp. Tus clientes ven tus kits, eligen fecha en calendario, pagan la seña del 50% y reciben su código QR automáticamente.',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE config_saas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Acceso publico config_saas" ON config_saas;
+CREATE POLICY "Acceso publico config_saas" ON config_saas FOR ALL USING (true) WITH CHECK (true);

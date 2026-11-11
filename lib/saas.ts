@@ -65,6 +65,26 @@ export interface PagoSuscripcion {
   fechaPago: string;
 }
 
+export interface SaasConfig {
+  whatsappSoporte: string;
+  textoBotonWhatsapp: string;
+  mensajeSoporte: string;
+  aliasCobroSaaS: string;
+  tituloVenta: string;
+  subtituloVenta: string;
+}
+
+export const SAAS_CONFIG_DEFAULT: SaasConfig = {
+  whatsappSoporte: '0983 637 780',
+  textoBotonWhatsapp: '¿Tenés dudas? Escribinos por WhatsApp',
+  mensajeSoporte: 'Hola! Quiero consultar por el sistema Pegue y Monte',
+  aliasCobroSaaS: '3233591',
+  tituloVenta:
+    'Tené tu propia App Web de Pegue y Monte y Audiovisual en 1 minuto',
+  subtituloVenta:
+    'Dejá de responder precios uno por uno por WhatsApp. Tus clientes ven tus kits, eligen fecha en calendario, pagan la seña del 50% y reciben su código QR automáticamente.',
+};
+
 const addDays = (days: number): string => {
   const d = new Date();
   d.setDate(d.getDate() + days);

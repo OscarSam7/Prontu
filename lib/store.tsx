@@ -20,6 +20,8 @@ import {
   PagoSuscripcion,
   PlanSaaS,
   EstadoSuscripcion,
+  SaasConfig,
+  SAAS_CONFIG_DEFAULT,
   PLANES_SAAS,
   NEGOCIOS_INICIALES,
   PAGOS_SUSCRIPCION_INICIALES,
@@ -68,6 +70,8 @@ interface AppContextType {
   eliminarKit: (kitId: number) => { ok: boolean; error?: string };
   negocios: Negocio[];
   pagosSuscripcion: PagoSuscripcion[];
+  saasConfig: SaasConfig;
+  actualizarSaasConfig: (config: SaasConfig) => void;
   crearNegocio: (datos: {
     nombre: string;
     slug?: string;
@@ -344,6 +348,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [pagosSuscripcion, setPagosSuscripcion] = useState<PagoSuscripcion[]>(
     PAGOS_SUSCRIPCION_INICIALES
   );
+  const [saasConfig, setSaasConfig] = useState<SaasConfig>(SAAS_CONFIG_DEFAULT);
   const [esDecoradora, setEsDecoradoraState] = useState<boolean>(false);
   const [draft, setDraft] = useState<DraftReserva>(defaultDraft);
   const [hydrated, setHydrated] = useState(false);
@@ -373,6 +378,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const savedPagosSus = localStorage.getItem('pym_pagos_suscripcion');
       if (savedPagosSus) {
         setPagosSuscripcion(JSON.parse(savedPagosSus));
+      }
+      const savedSaasCfg = localStorage.getItem('pym_saas_config');
+      if (savedSaasCfg) {
+        setSaasConfig(JSON.parse(savedSaasCfg));
       }
     } catch (e) {
       console.error('Error cargando estado local:', e);
@@ -429,6 +438,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (!pagSusErr && pagSusData && pagSusData.length > 0) {
             setPagosSuscripcion(pagSusData.map(rowToPagoSus));
           }
+
+          const { data: cfgData, error: cfgErr } = await supabase
+            .from('config_saas')
+            .select('*')
+            .eq('id', 'default')
+            .maybeSingle();
+
+          if (!cfgErr && cfgData) {
+            setSaasConfig({
+              whatsappSoporte: cfgData.whatsapp_soporte || SAAS_CONFIG_DEFAULT.whatsappSoporte,
+              textoBotonWhatsapp:
+                cfgData.texto_boton_whatsapp || SAAS_CONFIG_DEFAULT.textoBotonWhatsapp,
+              mensajeSoporte: cfgData.mensaje_soporte || SAAS_CONFIG_DEFAULT.mensajeSoporte,
+              aliasCobroSaaS: cfgData.alias_cobro_saas || SAAS_CONFIG_DEFAULT.aliasCobroSaaS,
+              tituloVenta: cfgData.titulo_venta || SAAS_CONFIG_DEFAULT.tituloVenta,
+              subtituloVenta: cfgData.subtitulo_venta || SAAS_CONFIG_DEFAULT.subtituloVenta,
+            });
+          }
         } catch (err) {
           console.error('Error sincronizando con Supabase:', err);
         }
@@ -465,6 +492,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated) return;
     localStorage.setItem('pym_pagos_suscripcion', JSON.stringify(pagosSuscripcion));
   }, [pagosSuscripcion, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem('pym_saas_config', JSON.stringify(saasConfig));
+  }, [saasConfig, hydrated]);
 
   // Registrar Service Worker PWA
   useEffect(() => {
@@ -979,6 +1011,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { ok: true };
   };
 
+  const actualizarSaasConfig = (config: SaasConfig) => {
+    setSaasConfig(config);
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('config_saas')
+        .upsert({
+          id: 'default',
+          whatsapp_soporte: config.whatsappSoporte,
+          texto_boton_whatsapp: config.textoBotonWhatsapp,
+          mensaje_soporte: config.mensajeSoporte,
+          alias_cobro_saas: config.aliasCobroSaaS,
+          titulo_venta: config.tituloVenta,
+          subtitulo_venta: config.subtituloVenta,
+        })
+        .then(({ error }) => {
+          if (error) console.error('Error guardando config_saas en Supabase:', error);
+        });
+    }
+  };
+
   const eliminarNegocio = (id: string) => {
     setNegocios((prev) => prev.filter((n) => n.id !== id));
     if (isSupabaseConfigured()) {
@@ -1014,6 +1066,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         eliminarKit,
         negocios,
         pagosSuscripcion,
+        saasConfig,
+        actualizarSaasConfig,
         crearNegocio,
         actualizarNegocio,
         cambiarEstadoNegocio,
