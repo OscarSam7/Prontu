@@ -8,9 +8,10 @@ import { useApp } from '@/lib/store';
 
 interface KitCardProps {
   kit: Kit;
+  hrefPrefix?: string;
 }
 
-export default function KitCard({ kit }: KitCardProps) {
+export default function KitCard({ kit, hrefPrefix = '' }: KitCardProps) {
   const { esDecoradora, esFechaOcupada } = useApp();
   const hoyStr = new Date().toISOString().split('T')[0];
   const ocupadoHoy = !kit.disponible || esFechaOcupada(kit.id, hoyStr);
@@ -20,7 +21,7 @@ export default function KitCard({ kit }: KitCardProps) {
 
   return (
     <Link
-      href={`/kit/${kit.id}`}
+      href={`${hrefPrefix}/kit/${kit.id}`}
       className="group bg-white rounded-3xl overflow-hidden shadow-card hover:shadow-soft border border-pink-100/80 transition-all duration-300 flex flex-col justify-between"
     >
       <div>

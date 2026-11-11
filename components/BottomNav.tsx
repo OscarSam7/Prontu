@@ -10,28 +10,38 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { esDecoradora } = useApp();
 
-  if (pathname.startsWith('/admin') || pathname.startsWith('/super-admin')) {
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/super-admin') ||
+    pathname.includes('/admin') ||
+    pathname === '/vender'
+  ) {
     return null;
   }
+
+  // Si está dentro de una tienda suscriptora (/tienda/[slug]/...), mantener navegación dentro de esa tienda
+  const tiendaMatch = pathname.match(/^\/tienda\/([^/]+)/);
+  const basePath = tiendaMatch ? `/tienda/${tiendaMatch[1]}` : '';
 
   const navItems = [
     {
       label: 'Inicio',
-      href: '/',
+      href: basePath || '/',
       icon: Home,
-      active: pathname === '/',
+      active: basePath ? pathname === basePath : pathname === '/',
     },
     {
       label: 'Catálogo',
-      href: '/?catalogo=1#catalogo',
+      href: basePath ? `${basePath}#catalogo` : '/?catalogo=1#catalogo',
       icon: Grid,
-      active: pathname.startsWith('/kit'),
+      active: pathname.includes('/kit/'),
     },
     {
       label: 'Reservas',
-      href: '/reserva',
+      href: `${basePath}/reserva`,
       icon: CalendarCheck,
-      active: pathname === '/reserva' || pathname === '/pago',
+      active:
+        pathname === `${basePath}/reserva` || pathname === `${basePath}/pago`,
     },
     {
       label: 'Perfil',

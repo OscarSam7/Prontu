@@ -12,6 +12,7 @@ import {
   EstadoReserva,
   EstadoDevolucion,
   PRECIOS_ROTURA,
+  DEFAULT_NEGOCIO_ID,
 } from './kits';
 import { supabase, isSupabaseConfigured } from './supabase';
 import {
@@ -48,8 +49,11 @@ interface AppContextType {
   updateDraft: (partial: Partial<DraftReserva>) => void;
    confirmarReservaYPago: (
     metodoPago: 'transferencia' | 'bancard' | 'pix',
-    comprobanteNombre?: string
+    comprobanteNombre?: string,
+    negocioId?: string
   ) => Reserva;
+  getKitsByNegocio: (negocioId?: string) => Kit[];
+  getReservasByNegocio: (negocioId?: string) => Reserva[];
   actualizarEstadoReserva: (id: string, nuevoEstado: EstadoReserva) => void;
   registrarDevolucion: (
     id: string,
@@ -142,6 +146,7 @@ const buildTagsForKit = (
 
 const kitToRow = (k: Kit) => ({
   id: k.id,
+  negocio_id: k.negocioId || DEFAULT_NEGOCIO_ID,
   nombre: k.nombre,
   categoria: k.categoria,
   subcategoria: k.grupo,
@@ -171,6 +176,7 @@ const rowToKit = (row: any): Kit => {
 
   return {
     id: row.id,
+    negocioId: row.negocio_id || DEFAULT_NEGOCIO_ID,
     nombre: row.nombre,
     categoria: row.categoria,
     grupo,
@@ -196,6 +202,7 @@ const rowToKit = (row: any): Kit => {
 
 const reservaToRow = (r: Reserva) => ({
   id: r.id,
+  negocio_id: r.negocioId || DEFAULT_NEGOCIO_ID,
   kit_id: r.kitId,
   kit_nombre: r.kitNombre,
   cliente_nombre: r.clienteNombre,
@@ -225,6 +232,7 @@ const reservaToRow = (r: Reserva) => ({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const rowToReserva = (row: any): Reserva => ({
   id: row.id,
+  negocioId: row.negocio_id || DEFAULT_NEGOCIO_ID,
   kitId: row.kit_id,
   kitNombre: row.kit_nombre,
   clienteNombre: row.cliente_nombre,
@@ -480,9 +488,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const getKitsByNegocio = (negocioId = DEFAULT_NEGOCIO_ID): Kit[] => {
+    const propios = kits.filter(
+      (k) => (k.negocioId || DEFAULT_NEGOCIO_ID) === negocioId
+    );
+    if (negocioId !== DEFAULT_NEGOCIO_ID && propios.length === 0) {
+      // Para tiendas demo previas que aún no clonaron kits propios
+      return kits
+        .filter((k) => (k.negocioId || DEFAULT_NEGOCIO_ID) === DEFAULT_NEGOCIO_ID)
+        .slice(0, 6);
+    }
+    return propios;
+  };
+
+  const getReservasByNegocio = (negocioId = DEFAULT_NEGOCIO_ID): Reserva[] => {
+    return reservas.filter(
+      (r) => (r.negocioId || DEFAULT_NEGOCIO_ID) === negocioId
+    );
+  };
+
   const confirmarReservaYPago = (
     metodoPago: 'transferencia' | 'bancard' | 'pix',
-    comprobanteNombre?: string
+    comprobanteNombre?: string,
+    negocioId = DEFAULT_NEGOCIO_ID
   ): Reserva => {
     const kit = kits.find((k) => k.id === draft.kitId) || kits[0];
     const precioBase = esDecoradora ? kit.precioDecoradora : kit.precioPublico;
@@ -499,6 +527,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const nuevaReserva: Reserva = {
       id: nuevoId,
+      negocioId,
       kitId: kit.id,
       kitNombre: kit.nombre,
       clienteNombre: draft.clienteNombre || 'Cliente Pegue y Monte',
@@ -770,9 +799,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setNegocios((prev) => [nuevo, ...prev]);
 
+    // Clonar 3 kits iniciales propios para que la tienda suscriptora no arranque vacía
+    const maxId = kits.reduce((max, k) => (k.id > max ? k.id : max), 0);
+    const plantillas = [KITS[0], KITS[14], KITS[30]].filter(Boolean);
+    const kitsSemilla: Kit[] = plantillas.map((tpl, idx) => ({
+      ...tpl,
+      id: maxId + idx + 1,
+      negocioId: nuevo.id,
+      reseñas: 0,
+    }));
+    setKits((prev) => [...kitsSemilla, ...prev]);
+
     if (isSupabaseConfigured()) {
       supabase.from('negocios').insert(negocioToRow(nuevo)).then(({ error }) => {
         if (error) console.error('Error creando negocio en Supabase:', error);
+      });
+      supabase.from('kits').insert(kitsSemilla.map(kitToRow)).then(({ error }) => {
+        if (error) console.error('Error clonando kits iniciales en Supabase:', error);
       });
     }
 
@@ -885,6 +928,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         draft,
         updateDraft,
         confirmarReservaYPago,
+        getKitsByNegocio,
+        getReservasByNegocio,
         actualizarEstadoReserva,
         registrarDevolucion,
         toggleDisponibilidadKit,

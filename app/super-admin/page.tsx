@@ -181,14 +181,23 @@ export default function SuperAdminPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openNuevoModal}
-          className="px-4 py-3 rounded-2xl bg-brand-pink hover:bg-brand-pinkDark text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shrink-0 transition"
-        >
-          <Plus className="w-4 h-4" />
-          Crear Nueva Tienda
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Link
+            href="/vender"
+            className="px-3.5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center gap-1.5 transition"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Página Venta (/vender)
+          </Link>
+          <button
+            type="button"
+            onClick={openNuevoModal}
+            className="px-4 py-3 rounded-2xl bg-brand-pink hover:bg-brand-pinkDark text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition"
+          >
+            <Plus className="w-4 h-4" />
+            Crear Nueva Tienda
+          </button>
+        </div>
       </header>
 
       {/* Cards de Métricas SaaS */}

@@ -10,8 +10,11 @@ export type CategoriaFiltro =
   | 'Bautismo'
   | 'Boda';
 
+export const DEFAULT_NEGOCIO_ID = 'neg-pegue-y-monte-cde';
+
 export interface Kit {
   id: number;
+  negocioId?: string;
   nombre: string;
   categoria: string; // e.g., 'Cumple', '15 Años', 'Boda', 'Bautismo', 'Empresa', 'Sonido', 'Luces', 'Pantallas', 'Combo Total'
   grupo: 'Deco' | 'Audiovisual';
@@ -957,6 +960,7 @@ export type EstadoDevolucion = 'OK' | 'Roto' | 'Sucio';
 
 export interface Reserva {
   id: string;
+  negocioId?: string;
   kitId: number;
   kitNombre: string;
   clienteNombre: string;
