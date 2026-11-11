@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   KITS,
   Kit,
+  CategoriaFiltro,
   RESERVAS_EJEMPLO,
   Reserva,
   COSTO_DELIVERY_CDE,
@@ -47,6 +48,9 @@ interface AppContextType {
   ) => void;
   toggleDisponibilidadKit: (kitId: number) => void;
   actualizarPrecioKit: (kitId: number, precioPublico: number, precioDecoradora: number) => void;
+  agregarKit: (nuevo: Omit<Kit, 'id' | 'tags' | 'rating' | 'reseñas'>) => Kit;
+  editarKit: (kitActualizado: Omit<Kit, 'tags'> & { tags?: CategoriaFiltro[] }) => void;
+  eliminarKit: (kitId: number) => { ok: boolean; error?: string };
   esFechaOcupada: (kitId: number, dateStr: string) => boolean;
   rangoTieneConflicto: (kitId: number, inicio: string, fin: string) => boolean;
 }
@@ -74,6 +78,84 @@ const defaultDraft: DraftReserva = {
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const buildTagsForKit = (
+  categoria: string,
+  grupo: 'Deco' | 'Audiovisual'
+): CategoriaFiltro[] => {
+  const validFilters: CategoriaFiltro[] = [
+    'Todos',
+    'Deco',
+    'Sonido',
+    'Luces',
+    'Pantallas',
+    'Combo Total',
+    'Cumple',
+    '15 Años',
+    'Bautismo',
+    'Boda',
+  ];
+  const tags = new Set<CategoriaFiltro>(['Todos']);
+  if (grupo === 'Deco') tags.add('Deco');
+  if (categoria === 'Combo Total') {
+    tags.add('Combo Total');
+    tags.add('Deco');
+    tags.add('Sonido');
+    tags.add('Luces');
+    tags.add('Pantallas');
+  } else if (validFilters.includes(categoria as CategoriaFiltro)) {
+    tags.add(categoria as CategoriaFiltro);
+  }
+  return Array.from(tags);
+};
+
+const kitToRow = (k: Kit) => ({
+  id: k.id,
+  nombre: k.nombre,
+  categoria: k.categoria,
+  subcategoria: k.grupo,
+  precio_publico: k.precioPublico,
+  precio_decoradora: k.precioDecoradora,
+  garantia: k.garantia,
+  descripcion: k.descripcion,
+  incluye: k.incluye,
+  no_incluye: k.noIncluye,
+  fotos: k.fotos,
+  video_url: k.videoUrl,
+  rating: k.rating,
+  resenas: k.reseñas,
+  disponible: k.disponible,
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToKit = (row: any): Kit => {
+  const grupo: 'Deco' | 'Audiovisual' =
+    row.subcategoria === 'Audiovisual' ? 'Audiovisual' : 'Deco';
+  const baseMatch = KITS.find((k) => k.id === row.id);
+  const sameCategory =
+    baseMatch && baseMatch.categoria === row.categoria && baseMatch.grupo === grupo;
+
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    categoria: row.categoria,
+    grupo,
+    tags: sameCategory
+      ? baseMatch.tags
+      : buildTagsForKit(row.categoria, grupo),
+    precioPublico: row.precio_publico,
+    precioDecoradora: row.precio_decoradora,
+    garantia: row.garantia,
+    descripcion: row.descripcion,
+    incluye: Array.isArray(row.incluye) ? row.incluye : [],
+    noIncluye: Array.isArray(row.no_incluye) ? row.no_incluye : [],
+    fotos: Array.isArray(row.fotos) && row.fotos.length > 0 ? row.fotos : KITS[0].fotos,
+    videoUrl: row.video_url || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    rating: Number(row.rating ?? 5.0),
+    reseñas: Number(row.resenas ?? 0),
+    disponible: row.disponible !== false,
+  };
+};
 
 const reservaToRow = (r: Reserva) => ({
   id: r.id,
@@ -168,43 +250,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
           const { data: kitsData, error: kitsErr } = await supabase
             .from('kits')
-            .select('id, disponible, precio_publico, precio_decoradora');
+            .select('*')
+            .order('id', { ascending: true });
 
           if (!kitsErr && kitsData) {
             if (kitsData.length === 0) {
-              await supabase.from('kits').upsert(
-                KITS.map((k) => ({
-                  id: k.id,
-                  nombre: k.nombre,
-                  categoria: k.categoria,
-                  subcategoria: k.grupo,
-                  precio_publico: k.precioPublico,
-                  precio_decoradora: k.precioDecoradora,
-                  garantia: k.garantia,
-                  descripcion: k.descripcion,
-                  incluye: k.incluye,
-                  no_incluye: k.noIncluye,
-                  fotos: k.fotos,
-                  video_url: k.videoUrl,
-                  rating: k.rating,
-                  resenas: k.reseñas,
-                  disponible: k.disponible,
-                }))
-              );
+              await supabase.from('kits').upsert(KITS.map(kitToRow));
             } else {
-              setKits((prev) =>
-                prev.map((k) => {
-                  const remote = kitsData.find((rk) => rk.id === k.id);
-                  return remote
-                    ? {
-                        ...k,
-                        disponible: remote.disponible,
-                        precioPublico: remote.precio_publico,
-                        precioDecoradora: remote.precio_decoradora,
-                      }
-                    : k;
-                })
-              );
+              setKits(kitsData.map(rowToKit));
             }
           }
 
@@ -465,6 +518,79 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const agregarKit = (
+    nuevo: Omit<Kit, 'id' | 'tags' | 'rating' | 'reseñas'>
+  ): Kit => {
+    const maxId = kits.reduce((max, k) => (k.id > max ? k.id : max), 0);
+    const kitCreado: Kit = {
+      ...nuevo,
+      id: maxId + 1,
+      tags: buildTagsForKit(nuevo.categoria, nuevo.grupo),
+      rating: 5.0,
+      reseñas: 0,
+    };
+
+    setKits((prev) => [kitCreado, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('kits')
+        .insert(kitToRow(kitCreado))
+        .then(({ error }) => {
+          if (error) console.error('Error agregando kit en Supabase:', error);
+        });
+    }
+
+    return kitCreado;
+  };
+
+  const editarKit = (
+    kitActualizado: Omit<Kit, 'tags'> & { tags?: CategoriaFiltro[] }
+  ) => {
+    const kitConTags: Kit = {
+      ...kitActualizado,
+      tags: buildTagsForKit(kitActualizado.categoria, kitActualizado.grupo),
+    };
+
+    setKits((prev) =>
+      prev.map((k) => (k.id === kitConTags.id ? kitConTags : k))
+    );
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('kits')
+        .upsert(kitToRow(kitConTags))
+        .then(({ error }) => {
+          if (error) console.error('Error editando kit en Supabase:', error);
+        });
+    }
+  };
+
+  const eliminarKit = (kitId: number): { ok: boolean; error?: string } => {
+    const tieneReservas = reservas.some((r) => r.kitId === kitId);
+    if (tieneReservas) {
+      return {
+        ok: false,
+        error:
+          'Este kit tiene reservas asociadas en el historial. Usá "Desactivar" para ocultarlo de nuevas reservas sin perder el historial.',
+      };
+    }
+
+    setKits((prev) => prev.filter((k) => k.id !== kitId));
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('kits')
+        .delete()
+        .eq('id', kitId)
+        .then(({ error }) => {
+          if (error) console.error('Error borrando kit en Supabase:', error);
+        });
+    }
+
+    return { ok: true };
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -480,6 +606,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         registrarDevolucion,
         toggleDisponibilidadKit,
         actualizarPrecioKit,
+        agregarKit,
+        editarKit,
+        eliminarKit,
         esFechaOcupada,
         rangoTieneConflicto,
       }}
