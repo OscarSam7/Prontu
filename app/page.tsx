@@ -70,10 +70,11 @@ export default function HomePage() {
           </div>
 
           <Link
-            href="/admin"
-            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+            href="/mi-cuenta"
+            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-brand-pink transition flex items-center gap-1"
           >
-            Panel Admin
+            <Crown className="w-3.5 h-3.5 text-brand-gold" />
+            Club PRO
           </Link>
         </div>
 

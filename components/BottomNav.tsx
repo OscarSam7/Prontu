@@ -3,12 +3,16 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Grid, CalendarCheck, UserCheck, Shield } from 'lucide-react';
+import { Home, Grid, CalendarCheck, UserCheck } from 'lucide-react';
 import { useApp } from '@/lib/store';
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { esDecoradora } = useApp();
+
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
 
   const navItems = [
     {
@@ -35,12 +39,6 @@ export default function BottomNav() {
       icon: UserCheck,
       active: pathname === '/mi-cuenta',
       badge: esDecoradora ? 'PRO' : undefined,
-    },
-    {
-      label: 'Admin',
-      href: '/admin',
-      icon: Shield,
-      active: pathname.startsWith('/admin'),
     },
   ];
 
