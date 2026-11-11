@@ -110,7 +110,7 @@ export default function PagoPage() {
       `🔒 *Garantía Reembolsable:* ${formatGuaranies(reservaConfirmada.garantia)}`,
     ].join('\n');
 
-    const url = `https://wa.me/595983000000?text=${encodeURIComponent(mensaje)}`;
+    const url = `https://wa.me/595983637780?text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
   };
 
@@ -345,13 +345,24 @@ export default function PagoPage() {
         {/* Detalle según el método elegido */}
         {metodo === 'transferencia' && (
           <div className="p-4 rounded-2xl bg-brand-bg border border-pink-100 space-y-3">
-            <div className="text-xs space-y-1 text-gray-700">
+            <div className="text-xs space-y-1.5 text-gray-700">
               <p className="font-extrabold text-gray-900 text-sm">
                 Datos Bancarios SIPAP / Alias Paraguay:
               </p>
-              <p>• Banco: <strong>Banco Itaú Paraguay / Ueno Bank</strong></p>
-              <p>• Titular: <strong>Pegue y Monte CDE S.R.L.</strong></p>
-              <p>• RUC / Alias SIPAP: <strong>80099123-4</strong></p>
+              <p>• Titular: <strong>Pegue y Monte CDE</strong></p>
+              <div className="flex items-center justify-between gap-2 bg-white px-3 py-2 rounded-xl border border-pink-100">
+                <span>
+                  • Alias SIPAP (Celular): <strong className="text-gray-900">0983 637 780</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText('0983637780')}
+                  className="px-2.5 py-1 rounded-lg bg-pink-50 text-brand-pink font-bold text-[11px] hover:bg-brand-pink hover:text-white transition"
+                >
+                  Copiar
+                </button>
+              </div>
+              <p>• WhatsApp comprobantes: <strong>0983 637 780</strong></p>
               <p>• Monto exacto a transferir: <strong className="text-brand-pink">{formatGuaranies(sena50)}</strong></p>
             </div>
 
