@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS kits (
   no_incluye TEXT[] NOT NULL DEFAULT '{}',
   fotos TEXT[] NOT NULL DEFAULT '{}',
   video_url TEXT,
+  pasos_montaje TEXT[] DEFAULT '{}',
+  tiempo_armado TEXT,
+  medidas_transporte TEXT,
   rating NUMERIC(3,2) DEFAULT 4.9,
   resenas INTEGER DEFAULT 15,
   disponible BOOLEAN DEFAULT TRUE,
@@ -101,3 +104,19 @@ CREATE POLICY "Acceso publico reservas" ON reservas FOR ALL USING (true) WITH CH
 
 DROP POLICY IF EXISTS "Acceso publico perfiles" ON perfiles;
 CREATE POLICY "Acceso publico perfiles" ON perfiles FOR ALL USING (true) WITH CHECK (true);
+
+-- Columnas extra por si la tabla kits ya existía previamente
+ALTER TABLE kits ADD COLUMN IF NOT EXISTS pasos_montaje TEXT[] DEFAULT '{}';
+ALTER TABLE kits ADD COLUMN IF NOT EXISTS tiempo_armado TEXT;
+ALTER TABLE kits ADD COLUMN IF NOT EXISTS medidas_transporte TEXT;
+
+-- Bucket público de Storage para fotos y videos tutoriales de kits
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('kits-media', 'kits-media', true)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Lectura publica kits-media" ON storage.objects;
+CREATE POLICY "Lectura publica kits-media" ON storage.objects FOR SELECT USING (bucket_id = 'kits-media');
+
+DROP POLICY IF EXISTS "Subida publica kits-media" ON storage.objects;
+CREATE POLICY "Subida publica kits-media" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'kits-media');

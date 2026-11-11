@@ -19,6 +19,7 @@ import {
   formatGuaranies,
   COSTO_UPSELL_SONIDO_CASA,
 } from '@/lib/kits';
+import { getPlayableVideoInfo } from '@/lib/media';
 import { useApp } from '@/lib/store';
 import Calendar from '@/components/Calendar';
 import PaymentSummary from '@/components/PaymentSummary';
@@ -155,56 +156,110 @@ export default function KitDetailPage() {
       </section>
 
       {/* Modal de Video de Montaje */}
-      {mostrarVideo && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl">
-            <div className="p-4 flex items-center justify-between border-b border-gray-100">
-              <div>
-                <h3 className="font-bold text-gray-900 text-sm">
-                  Video de Montaje Paso a Paso (15 min)
-                </h3>
-                <p className="text-xs text-gray-500">Kit: {kit.nombre}</p>
+      {mostrarVideo && (() => {
+        const videoInfo = getPlayableVideoInfo(kit.videoUrl);
+        const pasos =
+          kit.pasosMontaje && kit.pasosMontaje.length > 0
+            ? kit.pasosMontaje
+            : [
+                'Encastrá la estructura principal / panel circular siguiendo las marcas de color.',
+                'Colocá las fundas elastizadas y acomodá las 3 mesas cilíndricas.',
+                'Agregá los adornos, bandejas y conectá la luz LED o equipo de sonido. ¡Listo sin herramientas!',
+              ];
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+              <div className="p-4 flex items-center justify-between border-b border-gray-100">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-sm">
+                    Tutorial de Montaje ({kit.tiempoArmado || '15 min aprox.'})
+                  </h3>
+                  <p className="text-xs text-gray-500">Kit: {kit.nombre}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMostrarVideo(false)}
+                  className="p-1.5 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setMostrarVideo(false)}
-                className="p-1.5 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-4 space-y-3 bg-gray-900 text-white">
-              <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black flex flex-col items-center justify-center relative border border-white/10">
-                <img
-                  src={kit.fotos[0]}
-                  alt={kit.nombre}
-                  className="absolute inset-0 w-full h-full object-cover opacity-35"
-                />
-                <div className="relative z-10 text-center p-6 space-y-2">
-                  <div className="w-14 h-14 rounded-full bg-brand-pink text-white flex items-center justify-center mx-auto shadow-lg animate-pulse">
-                    <Play className="w-7 h-7 fill-white ml-0.5" />
+
+              <div className="overflow-y-auto">
+                <div className="p-4 bg-gray-900 text-white">
+                  {videoInfo.type === 'video' ? (
+                    <video
+                      src={videoInfo.src}
+                      controls
+                      playsInline
+                      className="aspect-video w-full rounded-2xl bg-black"
+                    />
+                  ) : videoInfo.type === 'iframe' ? (
+                    <iframe
+                      src={videoInfo.src}
+                      title={`Tutorial ${kit.nombre}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="aspect-video w-full rounded-2xl border-0 bg-black"
+                    />
+                  ) : (
+                    <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black flex flex-col items-center justify-center relative border border-white/10">
+                      <img
+                        src={kit.fotos[0]}
+                        alt={kit.nombre}
+                        className="absolute inset-0 w-full h-full object-cover opacity-35"
+                      />
+                      <div className="relative z-10 text-center p-5 space-y-2">
+                        <div className="w-12 h-12 rounded-full bg-brand-pink text-white flex items-center justify-center mx-auto shadow-lg">
+                          <Play className="w-6 h-6 fill-white ml-0.5" />
+                        </div>
+                        <p className="font-extrabold text-sm">
+                          Guía Visual Pegue y Monte: {kit.nombre}
+                        </p>
+                        <p className="text-[11px] text-gray-200 max-w-xs mx-auto">
+                          Podés seguir los pasos aquí abajo o subir el video propio desde Admin → Inventario de Kits.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pasos de armado y detalles */}
+                <div className="p-4 space-y-2.5 bg-white text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-gray-900">
+                      Paso a paso para armar:
+                    </span>
+                    {kit.medidasTransporte && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-teal-50 text-brand-teal font-bold text-[11px]">
+                        {kit.medidasTransporte}
+                      </span>
+                    )}
                   </div>
-                  <p className="font-extrabold text-base">
-                    Tutorial Pegue y Monte: {kit.nombre}
-                  </p>
-                  <p className="text-xs text-gray-200 max-w-xs mx-auto">
-                    1. Encastrá el arco circular • 2. Colocá las fundas elastizadas • 3. Posicioná los 3 cilindros y luces LED. ¡Sin herramientas!
-                  </p>
+                  <ol className="space-y-1.5 list-decimal list-inside text-gray-700">
+                    {pasos.map((paso, idx) => (
+                      <li key={idx} className="leading-relaxed">
+                        {paso}
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               </div>
-            </div>
-            <div className="p-3 bg-brand-bg text-center">
-              <button
-                type="button"
-                onClick={() => setMostrarVideo(false)}
-                className="w-full py-2.5 rounded-2xl bg-brand-pink text-white font-bold text-xs"
-              >
-                Entendido, volver al kit
-              </button>
+
+              <div className="p-3 bg-brand-bg text-center border-t border-pink-100">
+                <button
+                  type="button"
+                  onClick={() => setMostrarVideo(false)}
+                  className="w-full py-2.5 rounded-2xl bg-brand-pink text-white font-bold text-xs"
+                >
+                  Entendido, volver al kit
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Encabezado e Info Principal del Kit */}
       <section className="bg-white rounded-3xl p-4 sm:p-5 shadow-card border border-pink-100 space-y-3">

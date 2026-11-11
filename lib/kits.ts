@@ -24,6 +24,9 @@ export interface Kit {
   noIncluye: string[];
   fotos: string[];
   videoUrl: string;
+  pasosMontaje?: string[];
+  tiempoArmado?: string;
+  medidasTransporte?: string;
   rating: number;
   reseñas: number;
   disponible: boolean;
