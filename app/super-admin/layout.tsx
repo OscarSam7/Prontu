@@ -9,10 +9,11 @@ export default function SuperAdminLayout({
   return (
     <AdminGuard
       authEndpoint="/api/super-admin-auth"
+      requireEmail={false}
       title="Panel Super Admin • SaaS"
       subtitle="Control central de tiendas suscriptoras, planes y cobros mensuales en Guaraníes."
       badgeLabel="Super Admin Maestro"
-      pinPlaceholder="Ingresá PIN Maestro (ej: 9999)"
+      pinPlaceholder="Ingresá PIN Maestro"
     >
       {children}
     </AdminGuard>

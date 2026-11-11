@@ -38,6 +38,7 @@ interface NegocioFormState {
   colorPrimario: string;
   plan: PlanSaaS;
   estado: EstadoSuscripcion;
+  emailAdmin: string;
   pinAdmin: string;
 }
 
@@ -51,6 +52,7 @@ const emptyNegocioForm: NegocioFormState = {
   colorPrimario: '#FF4D7A',
   plan: 'pro',
   estado: 'prueba',
+  emailAdmin: '',
   pinAdmin: '2026',
 };
 
@@ -107,6 +109,7 @@ export default function SuperAdminPage() {
       colorPrimario: n.colorPrimario,
       plan: n.plan,
       estado: n.estado,
+      emailAdmin: n.emailAdmin || '',
       pinAdmin: n.pinAdmin,
     });
     setModalOpen(true);
@@ -128,6 +131,7 @@ export default function SuperAdminPage() {
         colorPrimario: form.colorPrimario,
         plan: form.plan,
         estado: form.estado,
+        emailAdmin: form.emailAdmin.trim().toLowerCase() || editingNegocio.emailAdmin,
         pinAdmin: form.pinAdmin.trim() || '2026',
       });
     } else {
@@ -630,10 +634,25 @@ export default function SuperAdminPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">
-                    Alias SIPAP de la tienda
+                    Gmail (ID Admin) *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={form.emailAdmin}
+                    onChange={(e) =>
+                      setForm({ ...form, emailAdmin: e.target.value })
+                    }
+                    placeholder="dueño@gmail.com"
+                    className="w-full px-3 py-2 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    Alias SIPAP
                   </label>
                   <input
                     type="text"
@@ -647,7 +666,7 @@ export default function SuperAdminPage() {
                 </div>
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">
-                    PIN de su Admin
+                    Contraseña / PIN
                   </label>
                   <input
                     type="text"

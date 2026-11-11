@@ -49,6 +49,7 @@ export interface Negocio {
   precioMensual: number;
   estado: EstadoSuscripcion;
   fechaVencimiento: string; // YYYY-MM-DD
+  emailAdmin: string;
   pinAdmin: string;
   creadoEn: string;
 }
@@ -92,6 +93,7 @@ export const NEGOCIOS_INICIALES: Negocio[] = [
     precioMensual: 450000,
     estado: 'activo',
     fechaVencimiento: addDays(365),
+    emailAdmin: 'pegueymontecde@gmail.com',
     pinAdmin: '2026',
     creadoEn: addDays(-30),
   },
@@ -108,6 +110,7 @@ export const NEGOCIOS_INICIALES: Negocio[] = [
     precioMensual: 280000,
     estado: 'activo',
     fechaVencimiento: addDays(18),
+    emailAdmin: 'camila.fiestas@gmail.com',
     pinAdmin: '1234',
     creadoEn: addDays(-12),
   },
@@ -124,6 +127,7 @@ export const NEGOCIOS_INICIALES: Negocio[] = [
     precioMensual: 150000,
     estado: 'prueba',
     fechaVencimiento: addDays(7),
+    emailAdmin: 'encantoeventos.py@gmail.com',
     pinAdmin: '2026',
     creadoEn: addDays(-7),
   },

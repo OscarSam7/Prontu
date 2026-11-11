@@ -23,6 +23,11 @@ import {
   FileImage,
   X,
   Palette,
+  Mail,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Phone,
 } from 'lucide-react';
 import {
   Kit,
@@ -52,13 +57,21 @@ export default function TiendaAdminPage() {
     editarKit,
     toggleDisponibilidadKit,
     eliminarKit,
+    recuperarPinNegocio,
   } = useApp();
 
   const negocio = negocios.find((n) => n.slug === slug);
 
   const [autenticado, setAutenticado] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
   const [pinInput, setPinInput] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState('');
+  const [modoRecuperar, setModoRecuperar] = useState(false);
+  const [recEmail, setRecEmail] = useState('');
+  const [recWhatsapp, setRecWhatsapp] = useState('');
+  const [recNuevoPin, setRecNuevoPin] = useState('');
+  const [recSuccess, setRecSuccess] = useState('');
   const [tab, setTab] = useState<'reservas' | 'kits' | 'marca'>('reservas');
 
   // Modales reservas
@@ -97,12 +110,43 @@ export default function TiendaAdminPage() {
   if (!autenticado) {
     const handlePinSubmit = (e: React.FormEvent) => {
       e.preventDefault();
+      const emailOk =
+        emailInput.trim().toLowerCase() ===
+        (negocio.emailAdmin || '').trim().toLowerCase();
+      if (!emailOk) {
+        setPinError('El Gmail ingresado no coincide con el de esta tienda.');
+        return;
+      }
       if (pinInput.trim() === negocio.pinAdmin) {
         setAutenticado(true);
         setPinError('');
         setPinInput('');
       } else {
-        setPinError('PIN incorrecto para esta tienda.');
+        setPinError('Contraseña / PIN incorrecto para esta tienda.');
+      }
+    };
+
+    const handleRecuperar = (e: React.FormEvent) => {
+      e.preventDefault();
+      setPinError('');
+      setRecSuccess('');
+      const res = recuperarPinNegocio(
+        negocio.id,
+        recEmail,
+        recWhatsapp,
+        recNuevoPin
+      );
+      if (!res.ok) {
+        setPinError(res.error || 'Datos incorrectos.');
+      } else {
+        setRecSuccess(
+          '¡Contraseña restablecida! Ya podés iniciar sesión con tu nueva clave.'
+        );
+        setEmailInput(recEmail);
+        setPinInput('');
+        setTimeout(() => {
+          setModoRecuperar(false);
+        }, 1800);
       }
     };
 
@@ -120,42 +164,180 @@ export default function TiendaAdminPage() {
             className="w-14 h-14 rounded-2xl text-white flex items-center justify-center mx-auto"
             style={{ backgroundColor: negocio.colorPrimario }}
           >
-            <Lock className="w-7 h-7" />
+            {modoRecuperar ? (
+              <KeyRound className="w-7 h-7" />
+            ) : (
+              <Lock className="w-7 h-7" />
+            )}
           </div>
           <div>
             <span className="text-[11px] font-bold uppercase text-brand-pink">
               Panel Administrativo Privado
             </span>
             <h1 className="text-xl font-extrabold text-gray-900">
-              {negocio.nombre}
+              {modoRecuperar ? 'Recuperar Contraseña' : negocio.nombre}
             </h1>
             <p className="text-xs text-gray-500 mt-1">
-              Ingresá el PIN de tu tienda para gestionar reservas, kits y tu marca.
+              {modoRecuperar
+                ? 'Validá tu Gmail y WhatsApp registrado para cambiar tu clave.'
+                : 'Ingresá con tu Gmail (ID) y tu Contraseña / PIN para gestionar tu tienda.'}
             </p>
           </div>
 
-          <form onSubmit={handlePinSubmit} className="space-y-3 text-left">
-            <input
-              type="password"
-              inputMode="numeric"
-              required
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
-              placeholder={`PIN de tu tienda (ej: ${negocio.pinAdmin})`}
-              className="w-full px-4 py-3 rounded-2xl bg-brand-bg border border-pink-200 text-center text-lg font-extrabold tracking-widest"
-            />
-            {pinError && (
-              <p className="text-xs font-bold text-rose-600 text-center">
-                {pinError}
-              </p>
-            )}
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-2xl bg-brand-pink text-white font-extrabold text-sm shadow-md"
-            >
-              Entrar a mi Panel
-            </button>
-          </form>
+          {!modoRecuperar ? (
+            <form onSubmit={handlePinSubmit} className="space-y-3 text-left">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Gmail / Correo (ID)
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="tucorreo@gmail.com"
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-brand-bg border border-pink-200 text-sm font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Contraseña / PIN
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPin ? 'text' : 'password'}
+                    required
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value)}
+                    placeholder="Ingresá tu contraseña / PIN"
+                    className="w-full pl-4 pr-11 py-3 rounded-2xl bg-brand-bg border border-pink-200 text-center text-base font-extrabold tracking-widest"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPin((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1"
+                  >
+                    {showPin ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {pinError && (
+                <p className="text-xs font-bold text-rose-600 text-center">
+                  {pinError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3.5 rounded-2xl bg-brand-pink text-white font-extrabold text-sm shadow-md"
+              >
+                Entrar a mi Panel
+              </button>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinError('');
+                    setRecSuccess('');
+                    setRecEmail(emailInput);
+                    setModoRecuperar(true);
+                  }}
+                  className="text-xs font-bold text-brand-pink hover:underline"
+                >
+                  ¿Olvidaste tu contraseña? Recuperar acceso
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleRecuperar} className="space-y-3 text-left">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Gmail registrado (ID) *
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    value={recEmail}
+                    onChange={(e) => setRecEmail(e.target.value)}
+                    placeholder="tucorreo@gmail.com"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-brand-bg border border-pink-200 text-sm font-medium"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  WhatsApp registrado en la tienda *
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="tel"
+                    required
+                    value={recWhatsapp}
+                    onChange={(e) => setRecWhatsapp(e.target.value)}
+                    placeholder="Ej: 0981 555 210"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-brand-bg border border-pink-200 text-sm font-medium"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Nueva Contraseña / PIN *
+                </label>
+                <input
+                  type="text"
+                  required
+                  minLength={4}
+                  value={recNuevoPin}
+                  onChange={(e) => setRecNuevoPin(e.target.value)}
+                  placeholder="Mínimo 4 caracteres"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-brand-bg border border-pink-200 text-sm font-bold text-center"
+                />
+              </div>
+
+              {pinError && (
+                <p className="text-xs font-bold text-rose-600 text-center">
+                  {pinError}
+                </p>
+              )}
+              {recSuccess && (
+                <p className="text-xs font-bold text-emerald-700 text-center">
+                  {recSuccess}
+                </p>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinError('');
+                    setModoRecuperar(false);
+                  }}
+                  className="py-3 rounded-2xl bg-gray-100 text-gray-700 font-bold text-xs"
+                >
+                  Volver
+                </button>
+                <button
+                  type="submit"
+                  className="py-3 rounded-2xl bg-brand-teal text-white font-extrabold text-xs shadow"
+                >
+                  Restablecer Clave
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </main>
     );

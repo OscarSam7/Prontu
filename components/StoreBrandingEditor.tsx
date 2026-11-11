@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Upload, QrCode, Image as ImageIcon, Trash2, CheckCircle2 } from 'lucide-react';
+import { Upload, QrCode, Image as ImageIcon, Trash2, CheckCircle2, Mail, Lock } from 'lucide-react';
 import { Negocio } from '@/lib/saas';
 import { uploadMediaImage } from '@/lib/media';
 import { useApp } from '@/lib/store';
@@ -20,6 +20,8 @@ export default function StoreBrandingEditor({
   const [whatsapp, setWhatsapp] = useState(negocio.whatsapp);
   const [aliasSipap, setAliasSipap] = useState(negocio.aliasSipap);
   const [colorPrimario, setColorPrimario] = useState(negocio.colorPrimario);
+  const [emailAdmin, setEmailAdmin] = useState(negocio.emailAdmin || '');
+  const [pinAdmin, setPinAdmin] = useState(negocio.pinAdmin || '2026');
   const [logoUrl, setLogoUrl] = useState<string | undefined>(negocio.logoUrl);
   const [portadaUrl, setPortadaUrl] = useState<string | undefined>(
     negocio.portadaUrl
@@ -36,6 +38,8 @@ export default function StoreBrandingEditor({
     setWhatsapp(negocio.whatsapp);
     setAliasSipap(negocio.aliasSipap);
     setColorPrimario(negocio.colorPrimario);
+    setEmailAdmin(negocio.emailAdmin || '');
+    setPinAdmin(negocio.pinAdmin || '2026');
     setLogoUrl(negocio.logoUrl);
     setPortadaUrl(negocio.portadaUrl);
     setQrPagoUrl(negocio.qrPagoUrl);
@@ -67,6 +71,8 @@ export default function StoreBrandingEditor({
       whatsapp: whatsapp.trim() || negocio.whatsapp,
       aliasSipap: aliasSipap.trim(),
       colorPrimario,
+      emailAdmin: emailAdmin.trim().toLowerCase() || negocio.emailAdmin,
+      pinAdmin: pinAdmin.trim() || negocio.pinAdmin,
       logoUrl,
       portadaUrl,
       qrPagoUrl,
@@ -148,6 +154,44 @@ export default function StoreBrandingEditor({
               onChange={(e) => setColorPrimario(e.target.value)}
               className="w-full h-10 rounded-xl border border-pink-100 cursor-pointer"
             />
+          </div>
+        </div>
+
+        {/* Credenciales de Acceso (Gmail ID + Contraseña / PIN) */}
+        <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-2.5">
+          <span className="font-extrabold text-gray-800 block">
+            Credenciales de Acceso al Panel Admin
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-gray-700 mb-1 flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5 text-brand-pink" />
+                Gmail de acceso (ID)
+              </label>
+              <input
+                type="email"
+                required
+                value={emailAdmin}
+                onChange={(e) => setEmailAdmin(e.target.value)}
+                placeholder="tucorreo@gmail.com"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-amber-200 font-medium"
+              />
+            </div>
+            <div>
+              <label className="font-bold text-gray-700 mb-1 flex items-center gap-1">
+                <Lock className="w-3.5 h-3.5 text-brand-pink" />
+                Contraseña / PIN
+              </label>
+              <input
+                type="text"
+                required
+                minLength={4}
+                value={pinAdmin}
+                onChange={(e) => setPinAdmin(e.target.value)}
+                placeholder="Mínimo 4 caracteres"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-amber-200 font-bold"
+              />
+            </div>
           </div>
         </div>
 

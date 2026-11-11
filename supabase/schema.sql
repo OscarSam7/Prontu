@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS negocios (
   precio_mensual INTEGER NOT NULL DEFAULT 280000,
   estado TEXT NOT NULL DEFAULT 'activo' CHECK (estado IN ('prueba', 'activo', 'suspendido')),
   fecha_vencimiento DATE NOT NULL DEFAULT (CURRENT_DATE + INTERVAL '30 days')::DATE,
+  email_admin TEXT NOT NULL DEFAULT 'pegueymontecde@gmail.com',
   pin_admin TEXT NOT NULL DEFAULT '2026',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -163,6 +164,7 @@ ALTER TABLE reservas ADD COLUMN IF NOT EXISTS comprobante_url TEXT;
 ALTER TABLE negocios ADD COLUMN IF NOT EXISTS logo_url TEXT;
 ALTER TABLE negocios ADD COLUMN IF NOT EXISTS portada_url TEXT;
 ALTER TABLE negocios ADD COLUMN IF NOT EXISTS qr_pago_url TEXT;
+ALTER TABLE negocios ADD COLUMN IF NOT EXISTS email_admin TEXT DEFAULT 'pegueymontecde@gmail.com';
 
 CREATE INDEX IF NOT EXISTS idx_negocios_slug ON negocios (slug);
 CREATE INDEX IF NOT EXISTS idx_kits_negocio ON kits (negocio_id);

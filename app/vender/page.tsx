@@ -26,12 +26,19 @@ export default function VenderSaaSPage() {
   const [whatsapp, setWhatsapp] = useState('');
   const [aliasSipap, setAliasSipap] = useState('');
   const [plan, setPlan] = useState<PlanSaaS>('pro');
+  const [emailAdmin, setEmailAdmin] = useState('');
   const [pinAdmin, setPinAdmin] = useState('2026');
   const [creado, setCreado] = useState<Negocio | null>(null);
 
   const handleCrearPrueba = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombreNegocio.trim() || !whatsapp.trim() || !duenoNombre.trim()) return;
+    if (
+      !nombreNegocio.trim() ||
+      !whatsapp.trim() ||
+      !duenoNombre.trim() ||
+      !emailAdmin.trim()
+    )
+      return;
 
     const nuevo = crearNegocio({
       nombre: nombreNegocio,
@@ -43,6 +50,7 @@ export default function VenderSaaSPage() {
       colorPrimario: '#FF4D7A',
       plan,
       estado: 'prueba',
+      emailAdmin: emailAdmin.trim().toLowerCase(),
       pinAdmin: pinAdmin || '2026',
     });
 
@@ -82,7 +90,11 @@ export default function VenderSaaSPage() {
               </code>
             </p>
             <p>
-              🔑 <strong>Tu PIN de Admin:</strong>{' '}
+              📧 <strong>Tu Gmail (ID):</strong>{' '}
+              <strong className="text-gray-900">{creado.emailAdmin}</strong>
+            </p>
+            <p>
+              🔑 <strong>Tu Contraseña / PIN:</strong>{' '}
               <strong className="text-brand-pink">{creado.pinAdmin}</strong>
             </p>
             <p>
@@ -262,29 +274,43 @@ export default function VenderSaaSPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block font-bold text-gray-700 mb-1">
-                Tu Alias SIPAP para cobrar señas
+                Tu Gmail de acceso (ID) *
               </label>
               <input
-                type="text"
-                value={aliasSipap}
-                onChange={(e) => setAliasSipap(e.target.value)}
-                placeholder="CI, RUC o Celular (ej: 4582910)"
+                type="email"
+                required
+                value={emailAdmin}
+                onChange={(e) => setEmailAdmin(e.target.value)}
+                placeholder="tucorreo@gmail.com"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
               />
             </div>
             <div>
               <label className="block font-bold text-gray-700 mb-1">
-                PIN secreto para entrar a tu Admin
+                Tu Alias SIPAP para cobrar
+              </label>
+              <input
+                type="text"
+                value={aliasSipap}
+                onChange={(e) => setAliasSipap(e.target.value)}
+                placeholder="CI, RUC o Celular"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-gray-700 mb-1">
+                Contraseña / PIN Admin *
               </label>
               <input
                 type="text"
                 required
+                minLength={4}
                 value={pinAdmin}
                 onChange={(e) => setPinAdmin(e.target.value)}
-                placeholder="Ej: 2026"
+                placeholder="Mínimo 4 caracteres"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-bold"
               />
             </div>

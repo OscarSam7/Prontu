@@ -78,6 +78,7 @@ interface AppContextType {
     colorPrimario: string;
     plan: PlanSaaS;
     estado: EstadoSuscripcion;
+    emailAdmin: string;
     pinAdmin: string;
   }) => Negocio;
   actualizarNegocio: (negocio: Negocio) => void;
@@ -86,6 +87,12 @@ interface AppContextType {
     negocioId: string,
     metodo: 'transferencia' | 'bancard' | 'pix' | 'efectivo'
   ) => void;
+  recuperarPinNegocio: (
+    negocioId: string,
+    email: string,
+    whatsapp: string,
+    nuevoPin: string
+  ) => { ok: boolean; error?: string };
   eliminarNegocio: (id: string) => void;
   esFechaOcupada: (kitId: number, dateStr: string) => boolean;
   rangoTieneConflicto: (kitId: number, inicio: string, fin: string) => boolean;
@@ -279,6 +286,7 @@ const negocioToRow = (n: Negocio) => ({
   precio_mensual: n.precioMensual,
   estado: n.estado,
   fecha_vencimiento: n.fechaVencimiento,
+  email_admin: n.emailAdmin,
   pin_admin: n.pinAdmin,
 });
 
@@ -299,6 +307,7 @@ const rowToNegocio = (row: any): Negocio => ({
   precioMensual: row.precio_mensual,
   estado: row.estado,
   fechaVencimiento: row.fecha_vencimiento,
+  emailAdmin: row.email_admin || 'pegueymontecde@gmail.com',
   pinAdmin: row.pin_admin || '2026',
   creadoEn: row.created_at
     ? String(row.created_at).split('T')[0]
@@ -781,6 +790,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     colorPrimario: string;
     plan: PlanSaaS;
     estado: EstadoSuscripcion;
+    emailAdmin: string;
     pinAdmin: string;
   }): Negocio => {
     const baseSlug = slugifyNegocio(datos.slug || datos.nombre) || `tienda-${Date.now()}`;
@@ -804,6 +814,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       precioMensual: PLANES_SAAS[datos.plan].precioMensual,
       estado: datos.estado,
       fechaVencimiento: venc.toISOString().split('T')[0],
+      emailAdmin: datos.emailAdmin.trim().toLowerCase(),
       pinAdmin: datos.pinAdmin.trim() || '2026',
       creadoEn: new Date().toISOString().split('T')[0],
     };
@@ -915,6 +926,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const recuperarPinNegocio = (
+    negocioId: string,
+    email: string,
+    whatsapp: string,
+    nuevoPin: string
+  ): { ok: boolean; error?: string } => {
+    const neg = negocios.find((n) => n.id === negocioId);
+    if (!neg) return { ok: false, error: 'Tienda no encontrada.' };
+
+    const cleanEmail = email.trim().toLowerCase();
+    const expectedEmail = (neg.emailAdmin || '').trim().toLowerCase();
+    const digitsInput = whatsapp.replace(/\D/g, '').replace(/^595/, '0');
+    const digitsExpected = neg.whatsapp.replace(/\D/g, '').replace(/^595/, '0');
+
+    if (!cleanEmail || cleanEmail !== expectedEmail) {
+      return {
+        ok: false,
+        error: 'El correo Gmail no coincide con el registrado en esta tienda.',
+      };
+    }
+
+    if (!digitsInput || digitsInput.slice(-6) !== digitsExpected.slice(-6)) {
+      return {
+        ok: false,
+        error: 'El número de WhatsApp no coincide con el registrado en esta tienda.',
+      };
+    }
+
+    const pinFinal = nuevoPin.trim();
+    if (pinFinal.length < 4) {
+      return {
+        ok: false,
+        error: 'La nueva contraseña / PIN debe tener al menos 4 caracteres.',
+      };
+    }
+
+    setNegocios((prev) =>
+      prev.map((n) => (n.id === negocioId ? { ...n, pinAdmin: pinFinal } : n))
+    );
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('negocios')
+        .update({ pin_admin: pinFinal })
+        .eq('id', negocioId)
+        .then(({ error }) => {
+          if (error) console.error('Error actualizando PIN en Supabase:', error);
+        });
+    }
+
+    return { ok: true };
+  };
+
   const eliminarNegocio = (id: string) => {
     setNegocios((prev) => prev.filter((n) => n.id !== id));
     if (isSupabaseConfigured()) {
@@ -954,6 +1018,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         actualizarNegocio,
         cambiarEstadoNegocio,
         registrarPagoSuscripcion,
+        recuperarPinNegocio,
         eliminarNegocio,
         esFechaOcupada,
         rangoTieneConflicto,
