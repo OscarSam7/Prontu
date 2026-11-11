@@ -380,7 +380,8 @@ export default function SuperAdminPage() {
                       <span>
                         URL: <code className="text-brand-pink">/tienda/{n.slug}</code>
                       </span>
-                      <span>PIN Admin: {n.pinAdmin}</span>
+                      <span>Gmail: <strong>{n.emailAdmin}</strong></span>
+                      <span>PIN: <strong>{n.pinAdmin}</strong></span>
                     </p>
                   </div>
 
@@ -434,9 +435,25 @@ export default function SuperAdminPage() {
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Link
-                      href={`/tienda/${n.slug}`}
+                      href={
+                        n.id === 'neg-pegue-y-monte-cde'
+                          ? '/admin'
+                          : `/tienda/${n.slug}/admin?soporte=1`
+                      }
+                      className="px-3 py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-extrabold flex items-center gap-1"
+                    >
+                      <Crown className="w-3.5 h-3.5 text-amber-300" />
+                      Entrar Admin
+                    </Link>
+
+                    <Link
+                      href={
+                        n.id === 'neg-pegue-y-monte-cde'
+                          ? '/'
+                          : `/tienda/${n.slug}`
+                      }
                       className="px-3 py-1.5 rounded-xl bg-white border border-pink-200 text-brand-pink text-xs font-bold flex items-center gap-1 hover:bg-pink-50"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />

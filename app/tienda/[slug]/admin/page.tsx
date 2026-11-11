@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -28,6 +28,7 @@ import {
   EyeOff,
   KeyRound,
   Phone,
+  Crown,
 } from 'lucide-react';
 import {
   Kit,
@@ -63,6 +64,7 @@ export default function TiendaAdminPage() {
   const negocio = negocios.find((n) => n.slug === slug);
 
   const [autenticado, setAutenticado] = useState(false);
+  const [esSuperAdminSoporte, setEsSuperAdminSoporte] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [pinInput, setPinInput] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -93,6 +95,23 @@ export default function TiendaAdminPage() {
   const [videoKit, setVideoKit] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [kitError, setKitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/super-admin-auth')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.authenticated) {
+          setEsSuperAdminSoporte(true);
+          if (
+            typeof window !== 'undefined' &&
+            window.location.search.includes('soporte=1')
+          ) {
+            setAutenticado(true);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   if (!negocio) {
     return (
@@ -243,7 +262,7 @@ export default function TiendaAdminPage() {
                 Entrar a mi Panel
               </button>
 
-              <div className="text-center pt-1">
+              <div className="text-center pt-1 space-y-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -252,10 +271,21 @@ export default function TiendaAdminPage() {
                     setRecEmail(emailInput);
                     setModoRecuperar(true);
                   }}
-                  className="text-xs font-bold text-brand-pink hover:underline"
+                  className="text-xs font-bold text-brand-pink hover:underline block mx-auto"
                 >
                   ¿Olvidaste tu contraseña? Recuperar acceso
                 </button>
+
+                {esSuperAdminSoporte && (
+                  <button
+                    type="button"
+                    onClick={() => setAutenticado(true)}
+                    className="w-full py-2.5 rounded-2xl bg-gray-900 text-amber-300 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <Crown className="w-4 h-4" />
+                    Entrar en Modo Soporte (Super Admin)
+                  </button>
+                )}
               </div>
             </form>
           ) : (
@@ -490,6 +520,21 @@ export default function TiendaAdminPage() {
 
   return (
     <main className="px-4 pt-4 pb-12 space-y-5">
+      {esSuperAdminSoporte && (
+        <div className="bg-gray-900 text-amber-200 rounded-2xl px-4 py-2.5 text-xs font-bold flex flex-wrap items-center justify-between gap-2 shadow">
+          <span className="flex items-center gap-1.5">
+            <Crown className="w-4 h-4 text-amber-400" />
+            Modo Soporte / Prueba Super Admin • Podés configurar la tienda para el dueño
+          </span>
+          <Link
+            href="/super-admin"
+            className="px-2.5 py-1 rounded-xl bg-white/15 hover:bg-white/25 text-white text-[11px]"
+          >
+            ← Volver al Super Admin
+          </Link>
+        </div>
+      )}
+
       {/* Barra superior Admin Tienda */}
       <div className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-3xl p-4 shadow-card border border-pink-100">
         <div>
