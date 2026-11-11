@@ -12,6 +12,7 @@ import {
   EstadoDevolucion,
   PRECIOS_ROTURA,
 } from './kits';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 export interface DraftReserva {
   kitId: number;
@@ -74,6 +75,64 @@ const defaultDraft: DraftReserva = {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const reservaToRow = (r: Reserva) => ({
+  id: r.id,
+  kit_id: r.kitId,
+  kit_nombre: r.kitNombre,
+  cliente_nombre: r.clienteNombre,
+  cliente_ci: r.clienteCi,
+  cliente_whatsapp: r.clienteWhatsapp,
+  direccion_fiesta: r.direccionFiesta,
+  modalidad_entrega: r.modalidadEntrega,
+  costo_delivery: r.costoDelivery,
+  agrega_sonido_casa: r.agregaSonidoCasa,
+  costo_upsell: r.costoUpsell,
+  es_tarifa_decoradora: r.esDecoradora,
+  fecha_retiro: r.fechaRetiro,
+  fecha_devolucion: r.fechaDevolucion,
+  precio_total: r.precioTotal,
+  sena_50: r.sena50,
+  saldo_pendiente: r.saldoPendiente,
+  garantia: r.garantia,
+  metodo_pago: r.metodoPago,
+  comprobante_nombre: r.comprobanteNombre ?? null,
+  estado: r.estado,
+  estado_devolucion: r.estadoDevolucion ?? null,
+  items_rotos: r.itemsRotos ?? [],
+  descuento_garantia: r.descuentoGarantia ?? 0,
+  garantia_devuelta: r.garantiaDevuelta ?? 0,
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToReserva = (row: any): Reserva => ({
+  id: row.id,
+  kitId: row.kit_id,
+  kitNombre: row.kit_nombre,
+  clienteNombre: row.cliente_nombre,
+  clienteCi: row.cliente_ci,
+  clienteWhatsapp: row.cliente_whatsapp,
+  direccionFiesta: row.direccion_fiesta,
+  modalidadEntrega: row.modalidad_entrega,
+  costoDelivery: row.costo_delivery,
+  agregaSonidoCasa: Boolean(row.agrega_sonido_casa),
+  costoUpsell: row.costo_upsell,
+  esDecoradora: Boolean(row.es_tarifa_decoradora),
+  fechaRetiro: row.fecha_retiro,
+  fechaDevolucion: row.fecha_devolucion,
+  precioTotal: row.precio_total,
+  sena50: row.sena_50,
+  saldoPendiente: row.saldo_pendiente,
+  garantia: row.garantia,
+  metodoPago: row.metodo_pago,
+  comprobanteNombre: row.comprobante_nombre ?? undefined,
+  estado: row.estado,
+  estadoDevolucion: row.estado_devolucion ?? undefined,
+  itemsRotos: row.items_rotos ?? [],
+  descuentoGarantia: row.descuento_garantia ?? 0,
+  garantiaDevuelta: row.garantia_devuelta ?? 0,
+  creadoEn: row.created_at ? String(row.created_at).split('T')[0] : new Date().toISOString().split('T')[0],
+});
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [kits, setKits] = useState<Kit[]>(KITS);
   const [reservas, setReservas] = useState<Reserva[]>(RESERVAS_EJEMPLO);
@@ -103,6 +162,69 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.error('Error cargando estado local:', e);
     }
     setHydrated(true);
+
+    if (isSupabaseConfigured()) {
+      (async () => {
+        try {
+          const { data: kitsData, error: kitsErr } = await supabase
+            .from('kits')
+            .select('id, disponible, precio_publico, precio_decoradora');
+
+          if (!kitsErr && kitsData) {
+            if (kitsData.length === 0) {
+              await supabase.from('kits').upsert(
+                KITS.map((k) => ({
+                  id: k.id,
+                  nombre: k.nombre,
+                  categoria: k.categoria,
+                  subcategoria: k.grupo,
+                  precio_publico: k.precioPublico,
+                  precio_decoradora: k.precioDecoradora,
+                  garantia: k.garantia,
+                  descripcion: k.descripcion,
+                  incluye: k.incluye,
+                  no_incluye: k.noIncluye,
+                  fotos: k.fotos,
+                  video_url: k.videoUrl,
+                  rating: k.rating,
+                  resenas: k.reseñas,
+                  disponible: k.disponible,
+                }))
+              );
+            } else {
+              setKits((prev) =>
+                prev.map((k) => {
+                  const remote = kitsData.find((rk) => rk.id === k.id);
+                  return remote
+                    ? {
+                        ...k,
+                        disponible: remote.disponible,
+                        precioPublico: remote.precio_publico,
+                        precioDecoradora: remote.precio_decoradora,
+                      }
+                    : k;
+                })
+              );
+            }
+          }
+
+          const { data: resData, error: resErr } = await supabase
+            .from('reservas')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (!resErr && resData) {
+            if (resData.length === 0) {
+              await supabase.from('reservas').upsert(RESERVAS_EJEMPLO.map(reservaToRow));
+            } else {
+              setReservas(resData.map(rowToReserva));
+            }
+          }
+        } catch (err) {
+          console.error('Error sincronizando con Supabase:', err);
+        }
+      })();
+    }
   }, []);
 
   useEffect(() => {
@@ -177,7 +299,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const sena50 = Math.round(precioTotal * 0.5);
     const saldoPendiente = precioTotal - sena50;
 
-    const nuevoId = `PYM-2026-${String(reservas.length + 1).padStart(3, '0')}`;
+    const nuevoId = `PYM-2026-${String(reservas.length + 1).padStart(3, '0')}-${Math.floor(
+      100 + Math.random() * 900
+    )}`;
     const hoy = new Date().toISOString().split('T')[0];
 
     const nuevaReserva: Reserva = {
@@ -206,20 +330,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     setReservas((prev) => [nuevaReserva, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      supabase.from('reservas').insert(reservaToRow(nuevaReserva)).then(({ error }) => {
+        if (error) console.error('Error guardando reserva en Supabase:', error);
+      });
+    }
+
     return nuevaReserva;
   };
 
   const actualizarEstadoReserva = (id: string, nuevoEstado: EstadoReserva) => {
+    const target = reservas.find((r) => r.id === id);
+    const nuevoSaldo =
+      nuevoEstado === 'Retirado' || nuevoEstado === 'Devuelto'
+        ? 0
+        : target?.saldoPendiente ?? 0;
+
     setReservas((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r;
         return {
           ...r,
           estado: nuevoEstado,
-          saldoPendiente: nuevoEstado === 'Retirado' || nuevoEstado === 'Devuelto' ? 0 : r.saldoPendiente,
+          saldoPendiente: nuevoSaldo,
         };
       })
     );
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('reservas')
+        .update({ estado: nuevoEstado, saldo_pendiente: nuevoSaldo })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Error actualizando estado en Supabase:', error);
+        });
+    }
   };
 
   const registrarDevolucion = (
@@ -227,18 +374,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     estadoDevolucion: EstadoDevolucion,
     itemsRotosIds: string[]
   ) => {
+    let descuento = 0;
+    if (estadoDevolucion === 'Roto') {
+      descuento = itemsRotosIds.reduce((acc, itemId) => {
+        const found = PRECIOS_ROTURA.find((p) => p.id === itemId);
+        return acc + (found ? found.precio : 0);
+      }, 0);
+    } else if (estadoDevolucion === 'Sucio') {
+      descuento = 80000; // Tasa limpieza profunda
+    }
+
+    const target = reservas.find((r) => r.id === id);
+    const garantiaDevueltaCalc = Math.max(0, (target?.garantia ?? 0) - descuento);
+
     setReservas((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r;
-        let descuento = 0;
-        if (estadoDevolucion === 'Roto') {
-          descuento = itemsRotosIds.reduce((acc, itemId) => {
-            const found = PRECIOS_ROTURA.find((p) => p.id === itemId);
-            return acc + (found ? found.precio : 0);
-          }, 0);
-        } else if (estadoDevolucion === 'Sucio') {
-          descuento = 80000; // Tasa limpieza profunda
-        }
         const garantiaDevuelta = Math.max(0, r.garantia - descuento);
         return {
           ...r,
@@ -251,12 +402,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
       })
     );
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('reservas')
+        .update({
+          estado: 'Devuelto',
+          saldo_pendiente: 0,
+          estado_devolucion: estadoDevolucion,
+          items_rotos: itemsRotosIds,
+          descuento_garantia: descuento,
+          garantia_devuelta: garantiaDevueltaCalc,
+        })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Error registrando devolución en Supabase:', error);
+        });
+    }
   };
 
   const toggleDisponibilidadKit = (kitId: number) => {
+    const currentKit = kits.find((k) => k.id === kitId);
+    const nuevoDisponible = currentKit ? !currentKit.disponible : true;
+
     setKits((prev) =>
-      prev.map((k) => (k.id === kitId ? { ...k, disponible: !k.disponible } : k))
+      prev.map((k) => (k.id === kitId ? { ...k, disponible: nuevoDisponible } : k))
     );
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('kits')
+        .update({ disponible: nuevoDisponible })
+        .eq('id', kitId)
+        .then(({ error }) => {
+          if (error) console.error('Error actualizando kit en Supabase:', error);
+        });
+    }
   };
 
   const actualizarPrecioKit = (
@@ -269,6 +450,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         k.id === kitId ? { ...k, precioPublico, precioDecoradora } : k
       )
     );
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('kits')
+        .update({
+          precio_publico: precioPublico,
+          precio_decoradora: precioDecoradora,
+        })
+        .eq('id', kitId)
+        .then(({ error }) => {
+          if (error) console.error('Error actualizando precios en Supabase:', error);
+        });
+    }
   };
 
   return (

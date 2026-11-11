@@ -84,3 +84,20 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql;
+
+-- Políticas de Row Level Security (RLS) para uso desde navegador con Publishable / Anon Key
+ALTER TABLE kits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reservas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE perfiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Acceso publico lectura kits" ON kits;
+CREATE POLICY "Acceso publico lectura kits" ON kits FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Acceso publico escritura kits" ON kits;
+CREATE POLICY "Acceso publico escritura kits" ON kits FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acceso publico reservas" ON reservas;
+CREATE POLICY "Acceso publico reservas" ON reservas FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acceso publico perfiles" ON perfiles;
+CREATE POLICY "Acceso publico perfiles" ON perfiles FOR ALL USING (true) WITH CHECK (true);
