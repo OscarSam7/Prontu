@@ -161,6 +161,7 @@ ALTER TABLE kits ADD COLUMN IF NOT EXISTS negocio_id TEXT DEFAULT 'neg-pegue-y-m
 ALTER TABLE reservas ADD COLUMN IF NOT EXISTS negocio_id TEXT DEFAULT 'neg-pegue-y-monte-cde';
 ALTER TABLE reservas ADD COLUMN IF NOT EXISTS comprobante_url TEXT;
 ALTER TABLE negocios ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE negocios ADD COLUMN IF NOT EXISTS portada_url TEXT;
 ALTER TABLE negocios ADD COLUMN IF NOT EXISTS qr_pago_url TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_negocios_slug ON negocios (slug);

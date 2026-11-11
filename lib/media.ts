@@ -49,7 +49,7 @@ const compressImageToBlob = (file: File, maxWidth = 1000): Promise<Blob> =>
 
 export async function uploadMediaImage(
   file: File,
-  folder: 'fotos' | 'comprobantes' | 'logos' | 'qr-pagos' = 'fotos'
+  folder: 'fotos' | 'comprobantes' | 'logos' | 'portadas' | 'qr-pagos' = 'fotos'
 ): Promise<string> {
   const compressed = await compressImageToBlob(file);
 

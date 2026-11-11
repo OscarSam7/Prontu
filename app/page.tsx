@@ -12,7 +12,7 @@ import {
   Volume2,
   Crown,
 } from 'lucide-react';
-import { CategoriaFiltro, formatGuaranies } from '@/lib/kits';
+import { CategoriaFiltro, formatGuaranies, DEFAULT_NEGOCIO_ID } from '@/lib/kits';
 import { useApp } from '@/lib/store';
 import KitCard from '@/components/KitCard';
 
@@ -30,9 +30,15 @@ const FILTROS: CategoriaFiltro[] = [
 ];
 
 export default function HomePage() {
-  const { kits, esDecoradora, toggleDecoradora } = useApp();
+  const { kits, negocios, esDecoradora, toggleDecoradora } = useApp();
   const [busqueda, setBusqueda] = useState('');
   const [filtroActivo, setFiltroActivo] = useState<CategoriaFiltro>('Todos');
+
+  const tiendaLocal = negocios.find((n) => n.id === DEFAULT_NEGOCIO_ID);
+  const storeName = tiendaLocal?.nombre || 'Pegue y Monte CDE';
+  const storeCity = tiendaLocal?.ciudad || 'Ciudad del Este - Paraguay';
+  const storeLogo = tiendaLocal?.logoUrl;
+  const storePortada = tiendaLocal?.portadaUrl;
 
   const kitsFiltrados = useMemo(() => {
     return kits.filter((kit) => {
@@ -55,16 +61,24 @@ export default function HomePage() {
       <header className="bg-white rounded-3xl p-4 sm:p-5 shadow-card border border-pink-100 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-pink to-brand-gold flex items-center justify-center text-white shadow-md">
-              <PartyPopper className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-pink to-brand-gold flex items-center justify-center text-white shadow-md overflow-hidden shrink-0">
+              {storeLogo ? (
+                <img
+                  src={storeLogo}
+                  alt={storeName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <PartyPopper className="w-6 h-6" />
+              )}
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight leading-none">
-                Pegue y Monte <span className="text-brand-pink">CDE</span>
+                {storeName}
               </h1>
               <p className="text-xs font-medium text-gray-500 flex items-center gap-1 mt-1">
                 <MapPin className="w-3.5 h-3.5 text-brand-teal" />
-                Ciudad del Este - Paraguay
+                {storeCity}
               </p>
             </div>
           </div>
@@ -134,8 +148,18 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Promo Express */}
+      {/* Hero Promo Express / Portada Personalizada */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-pink via-rose-500 to-brand-gold p-5 text-white shadow-soft">
+        {storePortada && (
+          <>
+            <img
+              src={storePortada}
+              alt={`Portada ${storeName}`}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/45 to-black/25" />
+          </>
+        )}
         <div className="relative z-10 max-w-lg space-y-2">
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/20 backdrop-blur-sm">
             <Sparkles className="w-3.5 h-3.5" /> Armalo vos misma en 15 minutos

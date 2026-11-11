@@ -43,6 +43,7 @@ export interface Negocio {
   aliasSipap: string;
   colorPrimario: string;
   logoUrl?: string;
+  portadaUrl?: string;
   qrPagoUrl?: string;
   plan: PlanSaaS;
   precioMensual: number;

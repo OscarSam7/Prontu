@@ -16,6 +16,7 @@ import {
   Wrench,
   FileImage,
   X,
+  Store,
 } from 'lucide-react';
 import {
   formatGuaranies,
@@ -92,13 +93,20 @@ export default function AdminDashboardPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/tienda"
+            className="px-3.5 py-2 rounded-2xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-extrabold flex items-center gap-1.5 hover:bg-amber-100 transition"
+          >
+            <Store className="w-4 h-4 text-brand-gold" />
+            Mi Tienda (Logo y Portada)
+          </Link>
           <Link
             href="/admin/kits"
             className="px-3.5 py-2 rounded-2xl bg-pink-50 text-brand-pink text-xs font-extrabold flex items-center gap-1.5 hover:bg-brand-pink hover:text-white transition"
           >
             <Box className="w-4 h-4" />
-            Gestionar 38 Kits
+            Gestionar Kits
           </Link>
           <Link
             href="/admin/reservas"

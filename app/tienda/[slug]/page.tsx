@@ -122,10 +122,20 @@ export default function TiendaSuscriptorPage() {
     <main className="px-4 pt-4 pb-10 space-y-5">
       {/* Header personalizado del Negocio Suscriptor */}
       <header
-        className="rounded-3xl p-5 text-white shadow-soft space-y-3"
+        className="relative overflow-hidden rounded-3xl p-5 text-white shadow-soft space-y-3"
         style={{ backgroundColor: negocio.colorPrimario }}
       >
-        <div className="flex items-center justify-between gap-3">
+        {negocio.portadaUrl && (
+          <>
+            <img
+              src={negocio.portadaUrl}
+              alt={`Portada ${negocio.nombre}`}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/30" />
+          </>
+        )}
+        <div className="relative z-10 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 overflow-hidden">
               {negocio.logoUrl ? (
@@ -165,7 +175,7 @@ export default function TiendaSuscriptorPage() {
           </a>
         </div>
 
-        <div className="text-xs bg-black/15 rounded-2xl px-3.5 py-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="relative z-10 text-xs bg-black/15 rounded-2xl px-3.5 py-2 flex flex-wrap items-center justify-between gap-2">
           <span className="flex items-center gap-1.5 font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
             Reservá con 50% de seña • Alias:{' '}
@@ -179,7 +189,7 @@ export default function TiendaSuscriptorPage() {
           <button
             type="button"
             onClick={toggleDecoradora}
-            className="w-full bg-white/15 hover:bg-white/25 rounded-2xl px-3.5 py-2 flex items-center justify-between text-xs font-bold transition"
+            className="relative z-10 w-full bg-white/15 hover:bg-white/25 rounded-2xl px-3.5 py-2 flex items-center justify-between text-xs font-bold transition"
           >
             <span className="flex items-center gap-1.5">
               <Crown className="w-4 h-4 text-amber-300" />

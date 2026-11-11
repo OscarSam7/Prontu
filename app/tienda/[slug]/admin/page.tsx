@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -23,7 +23,6 @@ import {
   FileImage,
   X,
   Palette,
-  QrCode,
 } from 'lucide-react';
 import {
   Kit,
@@ -33,12 +32,9 @@ import {
   Reserva,
 } from '@/lib/kits';
 import { PLANES_SAAS } from '@/lib/saas';
-import {
-  uploadKitImage,
-  uploadKitVideo,
-  uploadMediaImage,
-} from '@/lib/media';
+import { uploadKitImage, uploadKitVideo } from '@/lib/media';
 import { useApp } from '@/lib/store';
+import StoreBrandingEditor from '@/components/StoreBrandingEditor';
 
 const FOTO_DEFAULT =
   'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=900&q=80';
@@ -56,7 +52,6 @@ export default function TiendaAdminPage() {
     editarKit,
     toggleDisponibilidadKit,
     eliminarKit,
-    actualizarNegocio,
   } = useApp();
 
   const negocio = negocios.find((n) => n.slug === slug);
@@ -85,28 +80,6 @@ export default function TiendaAdminPage() {
   const [videoKit, setVideoKit] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [kitError, setKitError] = useState<string | null>(null);
-
-  // Marca & Cobros
-  const [marcaNombre, setMarcaNombre] = useState('');
-  const [marcaCiudad, setMarcaCiudad] = useState('');
-  const [marcaWhatsapp, setMarcaWhatsapp] = useState('');
-  const [marcaAlias, setMarcaAlias] = useState('');
-  const [marcaColor, setMarcaColor] = useState('#FF4D7A');
-  const [marcaLogo, setMarcaLogo] = useState<string | undefined>(undefined);
-  const [marcaQr, setMarcaQr] = useState<string | undefined>(undefined);
-  const [marcaGuardadaMsg, setMarcaGuardadaMsg] = useState<string | null>(null);
-  const [subiendoMarca, setSubiendoMarca] = useState(false);
-
-  useEffect(() => {
-    if (!negocio) return;
-    setMarcaNombre(negocio.nombre);
-    setMarcaCiudad(negocio.ciudad);
-    setMarcaWhatsapp(negocio.whatsapp);
-    setMarcaAlias(negocio.aliasSipap);
-    setMarcaColor(negocio.colorPrimario);
-    setMarcaLogo(negocio.logoUrl);
-    setMarcaQr(negocio.qrPagoUrl);
-  }, [negocio]);
 
   if (!negocio) {
     return (
@@ -320,46 +293,6 @@ export default function TiendaAdminPage() {
     }
 
     setModalKitOpen(false);
-  };
-
-  const handleSubirLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSubiendoMarca(true);
-    try {
-      const url = await uploadMediaImage(file, 'logos');
-      setMarcaLogo(url);
-    } finally {
-      setSubiendoMarca(false);
-    }
-  };
-
-  const handleSubirQrCobro = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSubiendoMarca(true);
-    try {
-      const url = await uploadMediaImage(file, 'qr-pagos');
-      setMarcaQr(url);
-    } finally {
-      setSubiendoMarca(false);
-    }
-  };
-
-  const handleGuardarMarca = (e: React.FormEvent) => {
-    e.preventDefault();
-    actualizarNegocio({
-      ...negocio,
-      nombre: marcaNombre.trim() || negocio.nombre,
-      ciudad: marcaCiudad.trim() || negocio.ciudad,
-      whatsapp: marcaWhatsapp.trim() || negocio.whatsapp,
-      aliasSipap: marcaAlias.trim(),
-      colorPrimario: marcaColor,
-      logoUrl: marcaLogo,
-      qrPagoUrl: marcaQr,
-    });
-    setMarcaGuardadaMsg('¡Datos de tu marca y QR guardados correctamente!');
-    setTimeout(() => setMarcaGuardadaMsg(null), 4000);
   };
 
   const toggleItemRoto = (id: string) => {
@@ -669,145 +602,7 @@ export default function TiendaAdminPage() {
         </section>
       )}
 
-      {tab === 'marca' && (
-        <section className="bg-white rounded-3xl p-4 sm:p-5 shadow-card border border-pink-100 space-y-4">
-          <div>
-            <h2 className="font-extrabold text-gray-900 text-base">
-              Personalizá tu Tienda y QR de Cobros
-            </h2>
-            <p className="text-xs text-gray-500">
-              Subí el logo de tu negocio y la imagen de tu QR de banco / PIX para que tus clientes transfieran la seña directo.
-            </p>
-          </div>
-
-          <form onSubmit={handleGuardarMarca} className="space-y-3.5 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">
-                  Nombre de tu Tienda
-                </label>
-                <input
-                  type="text"
-                  value={marcaNombre}
-                  onChange={(e) => setMarcaNombre(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">
-                  Ciudad
-                </label>
-                <input
-                  type="text"
-                  value={marcaCiudad}
-                  onChange={(e) => setMarcaCiudad(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">
-                  WhatsApp
-                </label>
-                <input
-                  type="text"
-                  value={marcaWhatsapp}
-                  onChange={(e) => setMarcaWhatsapp(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-medium"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">
-                  Alias SIPAP
-                </label>
-                <input
-                  type="text"
-                  value={marcaAlias}
-                  onChange={(e) => setMarcaAlias(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-brand-bg border border-pink-100 font-bold"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">
-                  Color Principal
-                </label>
-                <input
-                  type="color"
-                  value={marcaColor}
-                  onChange={(e) => setMarcaColor(e.target.value)}
-                  className="w-full h-10 rounded-xl border border-pink-100 cursor-pointer"
-                />
-              </div>
-            </div>
-
-            {/* Subida de Logo y QR de Cobro */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div className="p-3.5 rounded-2xl bg-brand-bg border border-pink-100 space-y-2 text-center">
-                <span className="font-extrabold text-gray-800 block">
-                  Logo de tu Negocio
-                </span>
-                {marcaLogo && (
-                  <img
-                    src={marcaLogo}
-                    alt="Logo tienda"
-                    className="w-20 h-20 rounded-2xl object-cover mx-auto border border-pink-200"
-                  />
-                )}
-                <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-pink-200 text-brand-pink font-bold cursor-pointer">
-                  <Upload className="w-3.5 h-3.5" />
-                  {subiendoMarca ? 'Subiendo...' : 'Subir Logo'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleSubirLogo}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-brand-bg border border-pink-100 space-y-2 text-center">
-                <span className="font-extrabold text-gray-800 flex items-center justify-center gap-1">
-                  <QrCode className="w-4 h-4 text-brand-teal" />
-                  Imagen QR de Transferencia / PIX
-                </span>
-                {marcaQr && (
-                  <img
-                    src={marcaQr}
-                    alt="QR cobro"
-                    className="w-24 h-24 rounded-xl object-contain mx-auto bg-white p-1 border border-pink-200"
-                  />
-                )}
-                <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-teal-200 text-brand-teal font-bold cursor-pointer">
-                  <Upload className="w-3.5 h-3.5" />
-                  {subiendoMarca ? 'Subiendo...' : 'Subir Foto de QR'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleSubirQrCobro}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
-
-            {marcaGuardadaMsg && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-center">
-                {marcaGuardadaMsg}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={subiendoMarca}
-              className="w-full py-3.5 rounded-2xl bg-brand-pink hover:bg-brand-pinkDark text-white font-extrabold shadow"
-            >
-              Guardar Marca y Cobros
-            </button>
-          </form>
-        </section>
-      )}
+      {tab === 'marca' && <StoreBrandingEditor negocio={negocio} />}
 
       {/* Modal Agregar / Modificar Kit Propio */}
       {modalKitOpen && (

@@ -51,6 +51,9 @@ export default function PagoView({
   } = useApp();
 
   const negocioMatch = negocios.find((n) => n.id === negocioId);
+  const nombreTienda = negocioMatch?.nombre || negocioNombre;
+  const whatsappTienda = negocioMatch?.whatsapp || whatsapp;
+  const aliasTienda = negocioMatch?.aliasSipap || aliasSipap;
   const qrCobro = qrPagoUrl || negocioMatch?.qrPagoUrl;
 
   const storeKits = getKitsByNegocio(negocioId);
@@ -98,7 +101,7 @@ export default function PagoView({
     );
 
     const payloadQR = JSON.stringify({
-      tienda: negocioNombre,
+      tienda: nombreTienda,
       reserva: nueva.id,
       kit: nueva.kitNombre,
       cliente: nueva.clienteNombre,
@@ -135,7 +138,7 @@ export default function PagoView({
 
   const handleEnviarWhatsApp = () => {
     if (!reservaConfirmada) return;
-    const cleanPhone = whatsapp.replace(/\D/g, '');
+    const cleanPhone = whatsappTienda.replace(/\D/g, '');
     const intlPhone = cleanPhone.startsWith('595')
       ? cleanPhone
       : cleanPhone.startsWith('0')
@@ -143,7 +146,7 @@ export default function PagoView({
       : `595${cleanPhone}`;
 
     const mensaje = [
-      `🎉 *RESERVA CONFIRMADA - ${negocioNombre.toUpperCase()}*`,
+      `🎉 *RESERVA CONFIRMADA - ${nombreTienda.toUpperCase()}*`,
       `📋 *Código:* ${reservaConfirmada.id}`,
       `🎈 *Kit:* ${reservaConfirmada.kitNombre}`,
       `👤 *Cliente:* ${reservaConfirmada.clienteNombre} (CI: ${reservaConfirmada.clienteCi})`,
@@ -392,20 +395,20 @@ export default function PagoView({
                 Datos Bancarios SIPAP / Alias Paraguay:
               </p>
               <p>
-                • Titular: <strong>{negocioNombre}</strong>
+                • Titular: <strong>{nombreTienda}</strong>
               </p>
               <div className="flex items-center justify-between gap-2 bg-white px-3 py-2 rounded-xl border border-pink-100">
                 <span>
                   • Alias SIPAP:{' '}
                   <strong className="text-gray-900">
-                    {aliasSipap || whatsapp}
+                    {aliasTienda || whatsappTienda}
                   </strong>
                 </span>
                 <button
                   type="button"
                   onClick={() =>
                     navigator.clipboard?.writeText(
-                      (aliasSipap || whatsapp).replace(/\s+/g, '')
+                      (aliasTienda || whatsappTienda).replace(/\s+/g, '')
                     )
                   }
                   className="px-2.5 py-1 rounded-lg bg-pink-50 text-brand-pink font-bold text-[11px] hover:bg-brand-pink hover:text-white transition"
@@ -414,7 +417,7 @@ export default function PagoView({
                 </button>
               </div>
               <p>
-                • WhatsApp comprobantes: <strong>{whatsapp}</strong>
+                • WhatsApp comprobantes: <strong>{whatsappTienda}</strong>
               </p>
               <p>
                 • Monto exacto a transferir:{' '}
@@ -503,7 +506,7 @@ export default function PagoView({
             </p>
             <p>
               • Chave PIX / Tel:{' '}
-              <strong>{aliasSipap || whatsapp}</strong>
+              <strong>{aliasTienda || whatsappTienda}</strong>
             </p>
             <p>
               • Equivalente aprox.:{' '}
