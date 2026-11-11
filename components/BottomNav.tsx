@@ -10,7 +10,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { esDecoradora } = useApp();
 
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') || pathname.startsWith('/super-admin')) {
     return null;
   }
 

@@ -14,6 +14,16 @@ import {
   PRECIOS_ROTURA,
 } from './kits';
 import { supabase, isSupabaseConfigured } from './supabase';
+import {
+  Negocio,
+  PagoSuscripcion,
+  PlanSaaS,
+  EstadoSuscripcion,
+  PLANES_SAAS,
+  NEGOCIOS_INICIALES,
+  PAGOS_SUSCRIPCION_INICIALES,
+  slugifyNegocio,
+} from './saas';
 
 export interface DraftReserva {
   kitId: number;
@@ -51,6 +61,27 @@ interface AppContextType {
   agregarKit: (nuevo: Omit<Kit, 'id' | 'tags' | 'rating' | 'reseñas'>) => Kit;
   editarKit: (kitActualizado: Omit<Kit, 'tags'> & { tags?: CategoriaFiltro[] }) => void;
   eliminarKit: (kitId: number) => { ok: boolean; error?: string };
+  negocios: Negocio[];
+  pagosSuscripcion: PagoSuscripcion[];
+  crearNegocio: (datos: {
+    nombre: string;
+    slug?: string;
+    ciudad: string;
+    duenoNombre: string;
+    whatsapp: string;
+    aliasSipap: string;
+    colorPrimario: string;
+    plan: PlanSaaS;
+    estado: EstadoSuscripcion;
+    pinAdmin: string;
+  }) => Negocio;
+  actualizarNegocio: (negocio: Negocio) => void;
+  cambiarEstadoNegocio: (id: string, estado: EstadoSuscripcion) => void;
+  registrarPagoSuscripcion: (
+    negocioId: string,
+    metodo: 'transferencia' | 'bancard' | 'pix' | 'efectivo'
+  ) => void;
+  eliminarNegocio: (id: string) => void;
   esFechaOcupada: (kitId: number, dateStr: string) => boolean;
   rangoTieneConflicto: (kitId: number, inicio: string, fin: string) => boolean;
 }
@@ -221,9 +252,72 @@ const rowToReserva = (row: any): Reserva => ({
   creadoEn: row.created_at ? String(row.created_at).split('T')[0] : new Date().toISOString().split('T')[0],
 });
 
+const negocioToRow = (n: Negocio) => ({
+  id: n.id,
+  slug: n.slug,
+  nombre: n.nombre,
+  ciudad: n.ciudad,
+  dueno_nombre: n.duenoNombre,
+  whatsapp: n.whatsapp,
+  alias_sipap: n.aliasSipap,
+  color_primario: n.colorPrimario,
+  plan: n.plan,
+  precio_mensual: n.precioMensual,
+  estado: n.estado,
+  fecha_vencimiento: n.fechaVencimiento,
+  pin_admin: n.pinAdmin,
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToNegocio = (row: any): Negocio => ({
+  id: row.id,
+  slug: row.slug,
+  nombre: row.nombre,
+  ciudad: row.ciudad,
+  duenoNombre: row.dueno_nombre || 'Propietario',
+  whatsapp: row.whatsapp,
+  aliasSipap: row.alias_sipap || '',
+  colorPrimario: row.color_primario || '#FF4D7A',
+  plan: row.plan,
+  precioMensual: row.precio_mensual,
+  estado: row.estado,
+  fechaVencimiento: row.fecha_vencimiento,
+  pinAdmin: row.pin_admin || '2026',
+  creadoEn: row.created_at
+    ? String(row.created_at).split('T')[0]
+    : new Date().toISOString().split('T')[0],
+});
+
+const pagoSusToRow = (p: PagoSuscripcion) => ({
+  id: p.id,
+  negocio_id: p.negocioId,
+  negocio_nombre: p.negocioNombre,
+  plan: p.plan,
+  monto: p.monto,
+  periodo: p.periodo,
+  metodo: p.metodo,
+  fecha_pago: p.fechaPago,
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToPagoSus = (row: any): PagoSuscripcion => ({
+  id: row.id,
+  negocioId: row.negocio_id,
+  negocioNombre: row.negocio_nombre,
+  plan: row.plan,
+  monto: row.monto,
+  periodo: row.periodo,
+  metodo: row.metodo || 'transferencia',
+  fechaPago: row.fecha_pago,
+});
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [kits, setKits] = useState<Kit[]>(KITS);
   const [reservas, setReservas] = useState<Reserva[]>(RESERVAS_EJEMPLO);
+  const [negocios, setNegocios] = useState<Negocio[]>(NEGOCIOS_INICIALES);
+  const [pagosSuscripcion, setPagosSuscripcion] = useState<PagoSuscripcion[]>(
+    PAGOS_SUSCRIPCION_INICIALES
+  );
   const [esDecoradora, setEsDecoradoraState] = useState<boolean>(false);
   const [draft, setDraft] = useState<DraftReserva>(defaultDraft);
   const [hydrated, setHydrated] = useState(false);
@@ -245,6 +339,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const savedKits = localStorage.getItem('pym_kits');
       if (savedKits) {
         setKits(JSON.parse(savedKits));
+      }
+      const savedNegocios = localStorage.getItem('pym_negocios');
+      if (savedNegocios) {
+        setNegocios(JSON.parse(savedNegocios));
+      }
+      const savedPagosSus = localStorage.getItem('pym_pagos_suscripcion');
+      if (savedPagosSus) {
+        setPagosSuscripcion(JSON.parse(savedPagosSus));
       }
     } catch (e) {
       console.error('Error cargando estado local:', e);
@@ -279,6 +381,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               setReservas(resData.map(rowToReserva));
             }
           }
+
+          const { data: negData, error: negErr } = await supabase
+            .from('negocios')
+            .select('*')
+            .order('created_at', { ascending: true });
+
+          if (!negErr && negData) {
+            if (negData.length <= 1) {
+              await supabase.from('negocios').upsert(NEGOCIOS_INICIALES.map(negocioToRow));
+            } else {
+              setNegocios(negData.map(rowToNegocio));
+            }
+          }
+
+          const { data: pagSusData, error: pagSusErr } = await supabase
+            .from('pagos_suscripcion')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (!pagSusErr && pagSusData && pagSusData.length > 0) {
+            setPagosSuscripcion(pagSusData.map(rowToPagoSus));
+          }
         } catch (err) {
           console.error('Error sincronizando con Supabase:', err);
         }
@@ -305,6 +429,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated) return;
     localStorage.setItem('pym_kits', JSON.stringify(kits));
   }, [kits, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem('pym_negocios', JSON.stringify(negocios));
+  }, [negocios, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem('pym_pagos_suscripcion', JSON.stringify(pagosSuscripcion));
+  }, [pagosSuscripcion, hydrated]);
 
   // Registrar Service Worker PWA
   useEffect(() => {
@@ -597,6 +731,149 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { ok: true };
   };
 
+  const crearNegocio = (datos: {
+    nombre: string;
+    slug?: string;
+    ciudad: string;
+    duenoNombre: string;
+    whatsapp: string;
+    aliasSipap: string;
+    colorPrimario: string;
+    plan: PlanSaaS;
+    estado: EstadoSuscripcion;
+    pinAdmin: string;
+  }): Negocio => {
+    const baseSlug = slugifyNegocio(datos.slug || datos.nombre) || `tienda-${Date.now()}`;
+    const existeSlug = negocios.some((n) => n.slug === baseSlug);
+    const slugFinal = existeSlug ? `${baseSlug}-${Math.floor(10 + Math.random() * 90)}` : baseSlug;
+
+    const diasIniciales = datos.estado === 'prueba' ? 14 : 30;
+    const venc = new Date();
+    venc.setDate(venc.getDate() + diasIniciales);
+
+    const nuevo: Negocio = {
+      id: `neg-${slugFinal}`,
+      slug: slugFinal,
+      nombre: datos.nombre.trim(),
+      ciudad: datos.ciudad.trim() || 'Paraguay',
+      duenoNombre: datos.duenoNombre.trim() || 'Propietario',
+      whatsapp: datos.whatsapp.trim(),
+      aliasSipap: datos.aliasSipap.trim(),
+      colorPrimario: datos.colorPrimario || '#FF4D7A',
+      plan: datos.plan,
+      precioMensual: PLANES_SAAS[datos.plan].precioMensual,
+      estado: datos.estado,
+      fechaVencimiento: venc.toISOString().split('T')[0],
+      pinAdmin: datos.pinAdmin.trim() || '2026',
+      creadoEn: new Date().toISOString().split('T')[0],
+    };
+
+    setNegocios((prev) => [nuevo, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      supabase.from('negocios').insert(negocioToRow(nuevo)).then(({ error }) => {
+        if (error) console.error('Error creando negocio en Supabase:', error);
+      });
+    }
+
+    return nuevo;
+  };
+
+  const actualizarNegocio = (negocioActualizado: Negocio) => {
+    const actualizado: Negocio = {
+      ...negocioActualizado,
+      precioMensual: PLANES_SAAS[negocioActualizado.plan].precioMensual,
+    };
+
+    setNegocios((prev) =>
+      prev.map((n) => (n.id === actualizado.id ? actualizado : n))
+    );
+
+    if (isSupabaseConfigured()) {
+      supabase.from('negocios').upsert(negocioToRow(actualizado)).then(({ error }) => {
+        if (error) console.error('Error actualizando negocio en Supabase:', error);
+      });
+    }
+  };
+
+  const cambiarEstadoNegocio = (id: string, estado: EstadoSuscripcion) => {
+    setNegocios((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, estado } : n))
+    );
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('negocios')
+        .update({ estado })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Error cambiando estado en Supabase:', error);
+        });
+    }
+  };
+
+  const registrarPagoSuscripcion = (
+    negocioId: string,
+    metodo: 'transferencia' | 'bancard' | 'pix' | 'efectivo'
+  ) => {
+    const neg = negocios.find((n) => n.id === negocioId);
+    if (!neg) return;
+
+    const hoy = new Date();
+    const baseFecha =
+      neg.fechaVencimiento > hoy.toISOString().split('T')[0]
+        ? new Date(neg.fechaVencimiento)
+        : hoy;
+    baseFecha.setDate(baseFecha.getDate() + 30);
+    const nuevoVencimiento = baseFecha.toISOString().split('T')[0];
+
+    const pago: PagoSuscripcion = {
+      id: `SUS-${Date.now().toString().slice(-6)}`,
+      negocioId: neg.id,
+      negocioNombre: neg.nombre,
+      plan: neg.plan,
+      monto: neg.precioMensual,
+      periodo: hoy.toISOString().slice(0, 7),
+      metodo,
+      fechaPago: hoy.toISOString().split('T')[0],
+    };
+
+    setNegocios((prev) =>
+      prev.map((n) =>
+        n.id === negocioId
+          ? { ...n, estado: 'activo', fechaVencimiento: nuevoVencimiento }
+          : n
+      )
+    );
+    setPagosSuscripcion((prev) => [pago, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('negocios')
+        .update({ estado: 'activo', fecha_vencimiento: nuevoVencimiento })
+        .eq('id', negocioId)
+        .then(({ error }) => {
+          if (error) console.error('Error renovando negocio en Supabase:', error);
+        });
+      supabase.from('pagos_suscripcion').insert(pagoSusToRow(pago)).then(({ error }) => {
+        if (error) console.error('Error guardando pago en Supabase:', error);
+      });
+    }
+  };
+
+  const eliminarNegocio = (id: string) => {
+    setNegocios((prev) => prev.filter((n) => n.id !== id));
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('negocios')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Error borrando negocio en Supabase:', error);
+        });
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -615,6 +892,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         agregarKit,
         editarKit,
         eliminarKit,
+        negocios,
+        pagosSuscripcion,
+        crearNegocio,
+        actualizarNegocio,
+        cambiarEstadoNegocio,
+        registrarPagoSuscripcion,
+        eliminarNegocio,
         esFechaOcupada,
         rangoTieneConflicto,
       }}

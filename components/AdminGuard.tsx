@@ -4,7 +4,23 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Lock, LogOut, ArrowLeft, ShieldCheck } from 'lucide-react';
 
-export default function AdminGuard({ children }: { children: React.ReactNode }) {
+interface AdminGuardProps {
+  children: React.ReactNode;
+  authEndpoint?: string;
+  title?: string;
+  subtitle?: string;
+  badgeLabel?: string;
+  pinPlaceholder?: string;
+}
+
+export default function AdminGuard({
+  children,
+  authEndpoint = '/api/admin-auth',
+  title = 'Acceso Privado • Admin',
+  subtitle = 'Ingresá tu PIN de administrador de Pegue y Monte CDE para gestionar reservas, devoluciones y kits.',
+  badgeLabel = 'Sesión Admin Activa',
+  pinPlaceholder = 'Ingresá tu PIN (ej: 2026)',
+}: AdminGuardProps) {
   const [checking, setChecking] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
@@ -12,7 +28,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin-auth')
+    fetch(authEndpoint)
       .then((res) => res.json())
       .then((data) => {
         setAuthenticated(Boolean(data?.authenticated));
@@ -21,7 +37,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
         setAuthenticated(false);
       })
       .finally(() => setChecking(false));
-  }, []);
+  }, [authEndpoint]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +45,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
     setSubmitting(true);
 
     try {
-      const res = await fetch('/api/admin-auth', {
+      const res = await fetch(authEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin }),
@@ -50,7 +66,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
   };
 
   const handleLogout = async () => {
-    await fetch('/api/admin-auth', { method: 'DELETE' });
+    await fetch(authEndpoint, { method: 'DELETE' });
     setAuthenticated(false);
   };
 
@@ -82,17 +98,17 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
 
           <div>
             <h1 className="text-xl font-extrabold text-gray-900">
-              Acceso Privado • Admin
+              {title}
             </h1>
             <p className="text-xs text-gray-500 mt-1">
-              Ingresá tu PIN de administrador de Pegue y Monte CDE para gestionar reservas, devoluciones y kits.
+              {subtitle}
             </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-3 text-left">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                PIN de Administrador
+                PIN de Acceso
               </label>
               <input
                 type="password"
@@ -100,7 +116,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
                 required
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                placeholder="Ingresá tu PIN (ej: 2026)"
+                placeholder={pinPlaceholder}
                 className="w-full px-4 py-3 rounded-2xl bg-brand-bg border border-pink-200 text-center text-lg font-extrabold tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-pink"
               />
             </div>
@@ -126,7 +142,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
     <div>
       <div className="px-4 pt-3 flex items-center justify-between">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-teal bg-teal-50 px-3 py-1 rounded-full">
-          <ShieldCheck className="w-3.5 h-3.5" /> Sesión Admin Activa
+          <ShieldCheck className="w-3.5 h-3.5" /> {badgeLabel}
         </span>
         <div className="flex items-center gap-2">
           <Link

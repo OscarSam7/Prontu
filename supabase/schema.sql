@@ -120,3 +120,73 @@ CREATE POLICY "Lectura publica kits-media" ON storage.objects FOR SELECT USING (
 
 DROP POLICY IF EXISTS "Subida publica kits-media" ON storage.objects;
 CREATE POLICY "Subida publica kits-media" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'kits-media');
+
+-- =========================================================================
+-- MÓDULO SAAS MULTI-TIENDA + SUPER ADMIN (SUSCRIPCIONES)
+-- =========================================================================
+
+-- 4. Tabla de Negocios / Tiendas Suscriptoras
+CREATE TABLE IF NOT EXISTS negocios (
+  id TEXT PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  nombre TEXT NOT NULL,
+  ciudad TEXT NOT NULL DEFAULT 'Ciudad del Este - Paraguay',
+  dueno_nombre TEXT NOT NULL DEFAULT 'Propietario',
+  whatsapp TEXT NOT NULL,
+  alias_sipap TEXT,
+  color_primario TEXT NOT NULL DEFAULT '#FF4D7A',
+  plan TEXT NOT NULL DEFAULT 'pro' CHECK (plan IN ('basico', 'pro', 'marca_blanca')),
+  precio_mensual INTEGER NOT NULL DEFAULT 280000,
+  estado TEXT NOT NULL DEFAULT 'activo' CHECK (estado IN ('prueba', 'activo', 'suspendido')),
+  fecha_vencimiento DATE NOT NULL DEFAULT (CURRENT_DATE + INTERVAL '30 days')::DATE,
+  pin_admin TEXT NOT NULL DEFAULT '2026',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Historial de Pagos de Suscripciones (Cobros del Super Admin)
+CREATE TABLE IF NOT EXISTS pagos_suscripcion (
+  id TEXT PRIMARY KEY,
+  negocio_id TEXT REFERENCES negocios(id) ON DELETE CASCADE,
+  negocio_nombre TEXT NOT NULL,
+  plan TEXT NOT NULL,
+  monto INTEGER NOT NULL,
+  periodo TEXT NOT NULL,
+  metodo TEXT NOT NULL DEFAULT 'transferencia',
+  fecha_pago DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Agregar referencia multi-tienda a kits y reservas existentes sin romper nada
+ALTER TABLE kits ADD COLUMN IF NOT EXISTS negocio_id TEXT DEFAULT 'neg-pegue-y-monte-cde';
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS negocio_id TEXT DEFAULT 'neg-pegue-y-monte-cde';
+
+CREATE INDEX IF NOT EXISTS idx_negocios_slug ON negocios (slug);
+CREATE INDEX IF NOT EXISTS idx_kits_negocio ON kits (negocio_id);
+CREATE INDEX IF NOT EXISTS idx_reservas_negocio ON reservas (negocio_id);
+
+-- Políticas RLS para el módulo SaaS
+ALTER TABLE negocios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pagos_suscripcion ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Acceso publico negocios" ON negocios;
+CREATE POLICY "Acceso publico negocios" ON negocios FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acceso publico pagos_suscripcion" ON pagos_suscripcion;
+CREATE POLICY "Acceso publico pagos_suscripcion" ON pagos_suscripcion FOR ALL USING (true) WITH CHECK (true);
+
+-- Tienda principal por defecto (Pegue y Monte CDE)
+INSERT INTO negocios (id, slug, nombre, ciudad, dueno_nombre, whatsapp, alias_sipap, plan, precio_mensual, estado, pin_admin)
+VALUES (
+  'neg-pegue-y-monte-cde',
+  'pegue-y-monte-cde',
+  'Pegue y Monte CDE',
+  'Ciudad del Este - Paraguay',
+  'Administrador Principal',
+  '0983 637 780',
+  '3233591',
+  'marca_blanca',
+  450000,
+  'activo',
+  '2026'
+)
+ON CONFLICT (slug) DO NOTHING;
