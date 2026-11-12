@@ -45,6 +45,11 @@ export interface DraftReserva {
   clienteCi: string;
   clienteWhatsapp: string;
   direccionFiesta: string;
+  requiereFactura: boolean;
+  facturacionRazonSocial: string;
+  facturacionRuc: string;
+  facturacionEmail: string;
+  facturacionDireccion: string;
   aceptaContrato: boolean;
 }
 
@@ -143,6 +148,11 @@ const defaultDraft: DraftReserva = {
   clienteCi: '',
   clienteWhatsapp: '',
   direccionFiesta: '',
+  requiereFactura: false,
+  facturacionRazonSocial: '',
+  facturacionRuc: '',
+  facturacionEmail: '',
+  facturacionDireccion: '',
   aceptaContrato: false,
 };
 
@@ -262,6 +272,11 @@ const reservaToRow = (r: Reserva) => ({
   items_rotos: r.itemsRotos ?? [],
   descuento_garantia: r.descuentoGarantia ?? 0,
   garantia_devuelta: r.garantiaDevuelta ?? 0,
+  requiere_factura: Boolean(r.requiereFactura),
+  facturacion_razon_social: r.facturacionRazonSocial ?? null,
+  facturacion_ruc: r.facturacionRuc ?? null,
+  facturacion_email: r.facturacionEmail ?? null,
+  facturacion_direccion: r.facturacionDireccion ?? null,
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -293,6 +308,11 @@ const rowToReserva = (row: any): Reserva => ({
   itemsRotos: row.items_rotos ?? [],
   descuentoGarantia: row.descuento_garantia ?? 0,
   garantiaDevuelta: row.garantia_devuelta ?? 0,
+  requiereFactura: Boolean(row.requiere_factura),
+  facturacionRazonSocial: row.facturacion_razon_social ?? undefined,
+  facturacionRuc: row.facturacion_ruc ?? undefined,
+  facturacionEmail: row.facturacion_email ?? undefined,
+  facturacionDireccion: row.facturacion_direccion ?? undefined,
   creadoEn: row.created_at ? String(row.created_at).split('T')[0] : new Date().toISOString().split('T')[0],
 });
 
@@ -737,6 +757,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       comprobanteNombre,
       comprobanteUrl,
       estado: 'Pagó 50%',
+      requiereFactura: Boolean(draft.requiereFactura),
+      facturacionRazonSocial: draft.requiereFactura
+        ? draft.facturacionRazonSocial || draft.clienteNombre
+        : undefined,
+      facturacionRuc: draft.requiereFactura
+        ? draft.facturacionRuc || draft.clienteCi
+        : undefined,
+      facturacionEmail: draft.requiereFactura
+        ? draft.facturacionEmail || undefined
+        : undefined,
+      facturacionDireccion: draft.requiereFactura
+        ? draft.facturacionDireccion || undefined
+        : undefined,
       creadoEn: hoy,
     };
 

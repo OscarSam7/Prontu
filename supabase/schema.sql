@@ -161,6 +161,11 @@ CREATE TABLE IF NOT EXISTS pagos_suscripcion (
 ALTER TABLE kits ADD COLUMN IF NOT EXISTS negocio_id TEXT DEFAULT 'neg-pegue-y-monte-cde';
 ALTER TABLE reservas ADD COLUMN IF NOT EXISTS negocio_id TEXT DEFAULT 'neg-pegue-y-monte-cde';
 ALTER TABLE reservas ADD COLUMN IF NOT EXISTS comprobante_url TEXT;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS requiere_factura BOOLEAN DEFAULT FALSE;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS facturacion_razon_social TEXT;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS facturacion_ruc TEXT;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS facturacion_email TEXT;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS facturacion_direccion TEXT;
 ALTER TABLE negocios ADD COLUMN IF NOT EXISTS logo_url TEXT;
 ALTER TABLE negocios ADD COLUMN IF NOT EXISTS portada_url TEXT;
 ALTER TABLE negocios ADD COLUMN IF NOT EXISTS qr_pago_url TEXT;

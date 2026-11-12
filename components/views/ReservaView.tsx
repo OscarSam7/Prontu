@@ -14,6 +14,8 @@ import {
   FileText,
   AlertCircle,
   CheckCircle2,
+  Receipt,
+  Mail,
 } from 'lucide-react';
 import {
   formatGuaranies,
@@ -53,6 +55,17 @@ export default function ReservaView({
   const [ci, setCi] = useState(draft.clienteCi);
   const [whatsapp, setWhatsapp] = useState(draft.clienteWhatsapp);
   const [direccion, setDireccion] = useState(draft.direccionFiesta);
+  const [requiereFactura, setRequiereFactura] = useState(draft.requiereFactura);
+  const [facturacionRazonSocial, setFacturacionRazonSocial] = useState(
+    draft.facturacionRazonSocial
+  );
+  const [facturacionRuc, setFacturacionRuc] = useState(draft.facturacionRuc);
+  const [facturacionEmail, setFacturacionEmail] = useState(
+    draft.facturacionEmail
+  );
+  const [facturacionDireccion, setFacturacionDireccion] = useState(
+    draft.facturacionDireccion
+  );
   const [modalidad, setModalidad] = useState<'retiro' | 'delivery'>(
     draft.modalidadEntrega
   );
@@ -65,6 +78,16 @@ export default function ReservaView({
     if (!nombre.trim() || !ci.trim() || !whatsapp.trim() || !direccion.trim()) {
       setError(
         'Por favor completá todos tus datos personales y la dirección de la fiesta.'
+      );
+      return;
+    }
+
+    if (
+      requiereFactura &&
+      (!facturacionRazonSocial.trim() || !facturacionRuc.trim())
+    ) {
+      setError(
+        'Completá la Razón Social / Nombre y el RUC / CI para la facturación.'
       );
       return;
     }
@@ -89,6 +112,13 @@ export default function ReservaView({
       clienteCi: ci.trim(),
       clienteWhatsapp: whatsapp.trim(),
       direccionFiesta: direccion.trim(),
+      requiereFactura,
+      facturacionRazonSocial: requiereFactura
+        ? facturacionRazonSocial.trim()
+        : '',
+      facturacionRuc: requiereFactura ? facturacionRuc.trim() : '',
+      facturacionEmail: requiereFactura ? facturacionEmail.trim() : '',
+      facturacionDireccion: requiereFactura ? facturacionDireccion.trim() : '',
       modalidadEntrega: modalidad,
       aceptaContrato: true,
     });
@@ -223,6 +253,119 @@ export default function ReservaView({
                   className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-brand-bg border border-pink-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-pink"
                 />
               </div>
+            </div>
+
+            {/* Opción Datos para Facturación */}
+            <div className="pt-2 border-t border-pink-100 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={requiereFactura}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setRequiereFactura(checked);
+                      if (checked) {
+                        if (!facturacionRazonSocial && nombre) {
+                          setFacturacionRazonSocial(nombre);
+                        }
+                        if (!facturacionRuc && ci) {
+                          setFacturacionRuc(ci);
+                        }
+                        if (!facturacionDireccion && direccion) {
+                          setFacturacionDireccion(direccion);
+                        }
+                      }
+                    }}
+                    className="w-4 h-4 rounded accent-brand-pink cursor-pointer"
+                  />
+                  <span className="text-xs sm:text-sm font-extrabold text-gray-800 inline-flex items-center gap-1.5">
+                    <Receipt className="w-4 h-4 text-brand-pink" />
+                    Agregar Datos para Facturación (Factura Legal)
+                  </span>
+                </label>
+
+                {requiereFactura && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFacturacionRazonSocial(nombre);
+                      setFacturacionRuc(ci);
+                      setFacturacionDireccion(direccion);
+                    }}
+                    className="text-[11px] font-bold text-brand-teal underline"
+                  >
+                    Copiar datos del contrato
+                  </button>
+                )}
+              </div>
+
+              {requiereFactura && (
+                <div className="p-3.5 rounded-2xl bg-brand-bg border border-pink-100 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        Razón Social o Nombre para Factura *
+                      </label>
+                      <input
+                        type="text"
+                        required={requiereFactura}
+                        value={facturacionRazonSocial}
+                        onChange={(e) =>
+                          setFacturacionRazonSocial(e.target.value)
+                        }
+                        placeholder="Ej: Eventos CDE S.R.L. o María Benítez"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-pink-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-pink"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        RUC / CI para Facturación *
+                      </label>
+                      <input
+                        type="text"
+                        required={requiereFactura}
+                        value={facturacionRuc}
+                        onChange={(e) => setFacturacionRuc(e.target.value)}
+                        placeholder="Ej: 80012345-6 o 4.582.910-0"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-pink-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-pink"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        Correo para envío de Factura (opcional)
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          value={facturacionEmail}
+                          onChange={(e) => setFacturacionEmail(e.target.value)}
+                          placeholder="ejemplo@gmail.com"
+                          className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white border border-pink-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-pink"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        Dirección Fiscal (opcional)
+                      </label>
+                      <input
+                        type="text"
+                        value={facturacionDireccion}
+                        onChange={(e) =>
+                          setFacturacionDireccion(e.target.value)
+                        }
+                        placeholder="Dirección que figurará en la factura"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-pink-100 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-pink"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

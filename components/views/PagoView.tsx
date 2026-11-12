@@ -159,6 +159,20 @@ export default function PagoView({
       `💰 *Total:* ${formatGuaranies(reservaConfirmada.precioTotal)}`,
       `✅ *Seña 50% Abonada:* ${formatGuaranies(reservaConfirmada.sena50)} (${reservaConfirmada.metodoPago.toUpperCase()})`,
       `🔒 *Garantía Reembolsable:* ${formatGuaranies(reservaConfirmada.garantia)}`,
+      ...(reservaConfirmada.requiereFactura
+        ? [
+            `🧾 *Facturación:* ${
+              reservaConfirmada.facturacionRazonSocial ||
+              reservaConfirmada.clienteNombre
+            } | RUC: ${
+              reservaConfirmada.facturacionRuc || reservaConfirmada.clienteCi
+            }${
+              reservaConfirmada.facturacionEmail
+                ? ` | Email: ${reservaConfirmada.facturacionEmail}`
+                : ''
+            }`,
+          ]
+        : []),
     ].join('\n');
 
     const url = `https://wa.me/${intlPhone}?text=${encodeURIComponent(mensaje)}`;
@@ -255,6 +269,29 @@ export default function PagoView({
               <span>Garantía reembolsable:</span>
               <span>{formatGuaranies(reservaConfirmada.garantia)}</span>
             </div>
+            {reservaConfirmada.requiereFactura && (
+              <div className="pt-2 border-t border-dashed border-gray-200 space-y-0.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Facturación:</span>
+                  <span className="font-bold text-gray-900">
+                    {reservaConfirmada.facturacionRazonSocial ||
+                      reservaConfirmada.clienteNombre}{' '}
+                    (RUC:{' '}
+                    {reservaConfirmada.facturacionRuc ||
+                      reservaConfirmada.clienteCi}
+                    )
+                  </span>
+                </div>
+                {reservaConfirmada.facturacionEmail && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Email Factura:</span>
+                    <span className="font-semibold text-gray-700">
+                      {reservaConfirmada.facturacionEmail}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 no-print">

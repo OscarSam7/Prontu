@@ -986,6 +986,11 @@ export interface Reserva {
   itemsRotos?: string[];
   descuentoGarantia?: number;
   garantiaDevuelta?: number;
+  requiereFactura?: boolean;
+  facturacionRazonSocial?: string;
+  facturacionRuc?: string;
+  facturacionEmail?: string;
+  facturacionDireccion?: string;
   creadoEn: string;
 }
 

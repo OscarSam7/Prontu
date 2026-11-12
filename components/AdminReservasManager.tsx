@@ -186,6 +186,10 @@ export default function AdminReservasManager({
       'Garantía (Gs)',
       'Inspección',
       'Descuento Garantía (Gs)',
+      'Requiere Factura',
+      'Razón Social Factura',
+      'RUC Factura',
+      'Email Factura',
     ];
 
     const escapeCsv = (val: string | number | undefined) => {
@@ -212,6 +216,10 @@ export default function AdminReservasManager({
       r.garantia,
       r.estadoDevolucion || '-',
       r.descuentoGarantia || 0,
+      r.requiereFactura ? 'Sí' : 'No',
+      r.facturacionRazonSocial || '',
+      r.facturacionRuc || '',
+      r.facturacionEmail || '',
     ]);
 
     rows.push([
@@ -528,6 +536,13 @@ export default function AdminReservasManager({
                     {r.modalidadEntrega === 'delivery' ? 'Delivery' : 'Retiro Local'} •{' '}
                     {r.metodoPago.toUpperCase()}
                   </p>
+                  {r.requiereFactura && (
+                    <p className="text-[11px] font-bold text-indigo-700 bg-indigo-50 inline-block px-2 py-0.5 rounded-lg mt-1">
+                      Factura: {r.facturacionRazonSocial || r.clienteNombre} • RUC:{' '}
+                      {r.facturacionRuc || r.clienteCi}
+                      {r.facturacionEmail ? ` • ${r.facturacionEmail}` : ''}
+                    </p>
+                  )}
                 </div>
 
                 <div className="text-right text-xs space-y-1">
@@ -807,6 +822,75 @@ export default function AdminReservasManager({
                   }
                   className="w-full px-3 py-2 rounded-xl bg-brand-bg border border-pink-100 font-medium"
                 />
+              </div>
+
+              <div className="p-3 rounded-2xl bg-indigo-50/60 border border-indigo-100 space-y-2">
+                <label className="flex items-center gap-2 font-extrabold text-indigo-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(reservaAEditar.requiereFactura)}
+                    onChange={(e) =>
+                      setReservaAEditar({
+                        ...reservaAEditar,
+                        requiereFactura: e.target.checked,
+                      })
+                    }
+                    className="accent-brand-pink"
+                  />
+                  Requiere Factura Legal (Datos de Facturación)
+                </label>
+                {reservaAEditar.requiereFactura && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={reservaAEditar.facturacionRazonSocial || ''}
+                      onChange={(e) =>
+                        setReservaAEditar({
+                          ...reservaAEditar,
+                          facturacionRazonSocial: e.target.value,
+                        })
+                      }
+                      placeholder="Razón Social"
+                      className="px-2.5 py-1.5 rounded-xl bg-white border border-indigo-200 font-medium"
+                    />
+                    <input
+                      type="text"
+                      value={reservaAEditar.facturacionRuc || ''}
+                      onChange={(e) =>
+                        setReservaAEditar({
+                          ...reservaAEditar,
+                          facturacionRuc: e.target.value,
+                        })
+                      }
+                      placeholder="RUC / CI"
+                      className="px-2.5 py-1.5 rounded-xl bg-white border border-indigo-200 font-medium"
+                    />
+                    <input
+                      type="email"
+                      value={reservaAEditar.facturacionEmail || ''}
+                      onChange={(e) =>
+                        setReservaAEditar({
+                          ...reservaAEditar,
+                          facturacionEmail: e.target.value,
+                        })
+                      }
+                      placeholder="Email Factura"
+                      className="px-2.5 py-1.5 rounded-xl bg-white border border-indigo-200 font-medium"
+                    />
+                    <input
+                      type="text"
+                      value={reservaAEditar.facturacionDireccion || ''}
+                      onChange={(e) =>
+                        setReservaAEditar({
+                          ...reservaAEditar,
+                          facturacionDireccion: e.target.value,
+                        })
+                      }
+                      placeholder="Dirección Fiscal"
+                      className="px-2.5 py-1.5 rounded-xl bg-white border border-indigo-200 font-medium"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
