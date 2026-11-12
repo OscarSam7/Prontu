@@ -213,3 +213,66 @@ ALTER TABLE config_saas ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Acceso publico config_saas" ON config_saas;
 CREATE POLICY "Acceso publico config_saas" ON config_saas FOR ALL USING (true) WITH CHECK (true);
+
+-- =========================================================================
+-- MÓDULO TESORERÍA Y ESTADO DE RESULTADOS DEL EJERCICIO
+-- =========================================================================
+
+-- 7. Plan de Cuentas de Tesorería por Negocio
+CREATE TABLE IF NOT EXISTS cuentas_tesoreria (
+  id TEXT PRIMARY KEY,
+  negocio_id TEXT NOT NULL DEFAULT 'neg-pegue-y-monte-cde',
+  codigo TEXT NOT NULL,
+  nombre TEXT NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('ingreso', 'egreso')),
+  grupo_resultado TEXT NOT NULL CHECK (
+    grupo_resultado IN (
+      'ingreso_operativo',
+      'otros_ingresos',
+      'costo_directo',
+      'gasto_operativo',
+      'otros_egresos'
+    )
+  ),
+  activa BOOLEAN NOT NULL DEFAULT TRUE,
+  sistema BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. Movimientos de Ingresos y Egresos
+CREATE TABLE IF NOT EXISTS movimientos_tesoreria (
+  id TEXT PRIMARY KEY,
+  negocio_id TEXT NOT NULL DEFAULT 'neg-pegue-y-monte-cde',
+  fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+  tipo TEXT NOT NULL CHECK (tipo IN ('ingreso', 'egreso')),
+  cuenta_id TEXT NOT NULL,
+  cuenta_codigo TEXT NOT NULL,
+  cuenta_nombre TEXT NOT NULL,
+  grupo_resultado TEXT NOT NULL CHECK (
+    grupo_resultado IN (
+      'ingreso_operativo',
+      'otros_ingresos',
+      'costo_directo',
+      'gasto_operativo',
+      'otros_egresos'
+    )
+  ),
+  concepto TEXT NOT NULL,
+  monto INTEGER NOT NULL,
+  metodo_pago TEXT NOT NULL CHECK (metodo_pago IN ('efectivo', 'transferencia', 'bancard', 'pix')),
+  comprobante_ref TEXT,
+  reserva_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cuentas_tesoreria_negocio ON cuentas_tesoreria (negocio_id);
+CREATE INDEX IF NOT EXISTS idx_movimientos_tesoreria_negocio_fecha ON movimientos_tesoreria (negocio_id, fecha);
+
+ALTER TABLE cuentas_tesoreria ENABLE ROW LEVEL SECURITY;
+ALTER TABLE movimientos_tesoreria ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Acceso publico cuentas_tesoreria" ON cuentas_tesoreria;
+CREATE POLICY "Acceso publico cuentas_tesoreria" ON cuentas_tesoreria FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acceso publico movimientos_tesoreria" ON movimientos_tesoreria;
+CREATE POLICY "Acceso publico movimientos_tesoreria" ON movimientos_tesoreria FOR ALL USING (true) WITH CHECK (true);

@@ -12,6 +12,7 @@ import {
   ListChecks,
   Wrench,
   Store,
+  Landmark,
 } from 'lucide-react';
 import {
   formatGuaranies,
@@ -84,6 +85,13 @@ export default function AdminDashboardPage() {
           >
             <ListChecks className="w-4 h-4" />
             Agenda Reservas
+          </Link>
+          <Link
+            href="/admin/tesoreria"
+            className="px-3.5 py-2 rounded-2xl bg-gray-900 text-white text-xs font-extrabold flex items-center gap-1.5 hover:bg-gray-800 transition shadow-sm"
+          >
+            <Landmark className="w-4 h-4 text-amber-300" />
+            Tesorería y Resultados
           </Link>
         </div>
       </header>

@@ -25,6 +25,7 @@ import {
   KeyRound,
   Phone,
   Crown,
+  Landmark,
 } from 'lucide-react';
 import {
   Kit,
@@ -35,6 +36,7 @@ import { uploadKitImage, uploadKitVideo } from '@/lib/media';
 import { useApp } from '@/lib/store';
 import StoreBrandingEditor from '@/components/StoreBrandingEditor';
 import AdminReservasManager from '@/components/AdminReservasManager';
+import TesoreriaManager from '@/components/TesoreriaManager';
 
 const FOTO_DEFAULT =
   'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=900&q=80';
@@ -66,7 +68,9 @@ export default function TiendaAdminPage() {
   const [recWhatsapp, setRecWhatsapp] = useState('');
   const [recNuevoPin, setRecNuevoPin] = useState('');
   const [recSuccess, setRecSuccess] = useState('');
-  const [tab, setTab] = useState<'reservas' | 'kits' | 'marca'>('reservas');
+  const [tab, setTab] = useState<'reservas' | 'tesoreria' | 'kits' | 'marca'>(
+    'reservas'
+  );
 
   // Modal agregar / modificar kit
   const [modalKitOpen, setModalKitOpen] = useState(false);
@@ -596,6 +600,18 @@ export default function TiendaAdminPage() {
         </button>
         <button
           type="button"
+          onClick={() => setTab('tesoreria')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-1.5 ${
+            tab === 'tesoreria'
+              ? 'bg-gray-900 text-white shadow'
+              : 'bg-white text-gray-600 border border-pink-100'
+          }`}
+        >
+          <Landmark className="w-3.5 h-3.5 text-amber-400" />
+          Tesorería y Resultados
+        </button>
+        <button
+          type="button"
           onClick={() => setTab('kits')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition ${
             tab === 'kits'
@@ -623,6 +639,13 @@ export default function TiendaAdminPage() {
         <AdminReservasManager
           reservas={misReservas}
           kits={misKits}
+          negocioNombre={negocio.nombre}
+        />
+      )}
+
+      {tab === 'tesoreria' && (
+        <TesoreriaManager
+          negocioId={negocio.id}
           negocioNombre={negocio.nombre}
         />
       )}

@@ -27,6 +27,13 @@ import {
   PAGOS_SUSCRIPCION_INICIALES,
   slugifyNegocio,
 } from './saas';
+import {
+  CuentaTesoreria,
+  MovimientoTesoreria,
+  CUENTAS_TESORERIA_INICIALES,
+  MOVIMIENTOS_TESORERIA_INICIALES,
+  buildCuentasInicialesNegocio,
+} from './tesoreria';
 
 export interface DraftReserva {
   kitId: number;
@@ -100,6 +107,19 @@ interface AppContextType {
     nuevoPin: string
   ) => { ok: boolean; error?: string };
   eliminarNegocio: (id: string) => void;
+  cuentasTesoreria: CuentaTesoreria[];
+  movimientosTesoreria: MovimientoTesoreria[];
+  getCuentasByNegocio: (negocioId?: string) => CuentaTesoreria[];
+  getMovimientosByNegocio: (negocioId?: string) => MovimientoTesoreria[];
+  agregarCuentaTesoreria: (cuenta: Omit<CuentaTesoreria, 'id'>) => CuentaTesoreria;
+  editarCuentaTesoreria: (cuenta: CuentaTesoreria) => void;
+  eliminarCuentaTesoreria: (id: string) => void;
+  agregarMovimientoTesoreria: (
+    mov: Omit<MovimientoTesoreria, 'id' | 'creadoEn'>
+  ) => MovimientoTesoreria;
+  editarMovimientoTesoreria: (mov: MovimientoTesoreria) => void;
+  eliminarMovimientoTesoreria: (id: string) => void;
+  importarCobrosReservasATesoreria: (negocioId?: string) => number;
   esFechaOcupada: (kitId: number, dateStr: string) => boolean;
   rangoTieneConflicto: (kitId: number, inicio: string, fin: string) => boolean;
 }
@@ -343,12 +363,77 @@ const rowToPagoSus = (row: any): PagoSuscripcion => ({
   fechaPago: row.fecha_pago,
 });
 
+const cuentaToRow = (c: CuentaTesoreria) => ({
+  id: c.id,
+  negocio_id: c.negocioId,
+  codigo: c.codigo,
+  nombre: c.nombre,
+  tipo: c.tipo,
+  grupo_resultado: c.grupoResultado,
+  activa: c.activa,
+  sistema: Boolean(c.sistema),
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToCuenta = (row: any): CuentaTesoreria => ({
+  id: row.id,
+  negocioId: row.negocio_id || DEFAULT_NEGOCIO_ID,
+  codigo: row.codigo,
+  nombre: row.nombre,
+  tipo: row.tipo,
+  grupoResultado: row.grupo_resultado,
+  activa: row.activa !== false,
+  sistema: Boolean(row.sistema),
+});
+
+const movimientoToRow = (m: MovimientoTesoreria) => ({
+  id: m.id,
+  negocio_id: m.negocioId,
+  fecha: m.fecha,
+  tipo: m.tipo,
+  cuenta_id: m.cuentaId,
+  cuenta_codigo: m.cuentaCodigo,
+  cuenta_nombre: m.cuentaNombre,
+  grupo_resultado: m.grupoResultado,
+  concepto: m.concepto,
+  monto: m.monto,
+  metodo_pago: m.metodoPago,
+  comprobante_ref: m.comprobanteRef || null,
+  reserva_id: m.reservaId || null,
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToMovimiento = (row: any): MovimientoTesoreria => ({
+  id: row.id,
+  negocioId: row.negocio_id || DEFAULT_NEGOCIO_ID,
+  fecha: row.fecha,
+  tipo: row.tipo,
+  cuentaId: row.cuenta_id,
+  cuentaCodigo: row.cuenta_codigo,
+  cuentaNombre: row.cuenta_nombre,
+  grupoResultado: row.grupo_resultado,
+  concepto: row.concepto,
+  monto: Number(row.monto) || 0,
+  metodoPago: row.metodo_pago || 'transferencia',
+  comprobanteRef: row.comprobante_ref || undefined,
+  reservaId: row.reserva_id || undefined,
+  creadoEn: row.created_at
+    ? String(row.created_at).split('T')[0]
+    : row.fecha,
+});
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [kits, setKits] = useState<Kit[]>(KITS);
   const [reservas, setReservas] = useState<Reserva[]>(RESERVAS_EJEMPLO);
   const [negocios, setNegocios] = useState<Negocio[]>(NEGOCIOS_INICIALES);
   const [pagosSuscripcion, setPagosSuscripcion] = useState<PagoSuscripcion[]>(
     PAGOS_SUSCRIPCION_INICIALES
+  );
+  const [cuentasTesoreria, setCuentasTesoreria] = useState<CuentaTesoreria[]>(
+    CUENTAS_TESORERIA_INICIALES
+  );
+  const [movimientosTesoreria, setMovimientosTesoreria] = useState<MovimientoTesoreria[]>(
+    MOVIMIENTOS_TESORERIA_INICIALES
   );
   const [saasConfig, setSaasConfig] = useState<SaasConfig>(SAAS_CONFIG_DEFAULT);
   const [esDecoradora, setEsDecoradoraState] = useState<boolean>(false);
@@ -384,6 +469,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const savedSaasCfg = localStorage.getItem('pym_saas_config');
       if (savedSaasCfg) {
         setSaasConfig(JSON.parse(savedSaasCfg));
+      }
+      const savedCuentasTes = localStorage.getItem('pym_cuentas_tesoreria');
+      if (savedCuentasTes) {
+        setCuentasTesoreria(JSON.parse(savedCuentasTes));
+      }
+      const savedMovsTes = localStorage.getItem('pym_movimientos_tesoreria');
+      if (savedMovsTes) {
+        setMovimientosTesoreria(JSON.parse(savedMovsTes));
       }
     } catch (e) {
       console.error('Error cargando estado local:', e);
@@ -458,6 +551,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               subtituloVenta: cfgData.subtitulo_venta || SAAS_CONFIG_DEFAULT.subtituloVenta,
             });
           }
+
+          const { data: ctaData, error: ctaErr } = await supabase
+            .from('cuentas_tesoreria')
+            .select('*')
+            .order('codigo', { ascending: true });
+
+          if (!ctaErr && ctaData) {
+            if (ctaData.length === 0) {
+              await supabase
+                .from('cuentas_tesoreria')
+                .upsert(CUENTAS_TESORERIA_INICIALES.map(cuentaToRow));
+            } else {
+              setCuentasTesoreria(ctaData.map(rowToCuenta));
+            }
+          }
+
+          const { data: movData, error: movErr } = await supabase
+            .from('movimientos_tesoreria')
+            .select('*')
+            .order('fecha', { ascending: false });
+
+          if (!movErr && movData) {
+            if (movData.length > 0) {
+              setMovimientosTesoreria(movData.map(rowToMovimiento));
+            }
+          }
         } catch (err) {
           console.error('Error sincronizando con Supabase:', err);
         }
@@ -499,6 +618,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated) return;
     localStorage.setItem('pym_saas_config', JSON.stringify(saasConfig));
   }, [saasConfig, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem(
+      'pym_cuentas_tesoreria',
+      JSON.stringify(cuentasTesoreria)
+    );
+  }, [cuentasTesoreria, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem(
+      'pym_movimientos_tesoreria',
+      JSON.stringify(movimientosTesoreria)
+    );
+  }, [movimientosTesoreria, hydrated]);
 
   // Registrar Service Worker PWA
   useEffect(() => {
@@ -1075,6 +1210,255 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // ================= TESORERÍA Y PLAN DE CUENTAS =================
+  const getCuentasByNegocio = (negocioId = DEFAULT_NEGOCIO_ID): CuentaTesoreria[] => {
+    const propias = cuentasTesoreria.filter(
+      (c) => (c.negocioId || DEFAULT_NEGOCIO_ID) === negocioId
+    );
+    if (propias.length === 0) {
+      return buildCuentasInicialesNegocio(negocioId);
+    }
+    return [...propias].sort((a, b) => a.codigo.localeCompare(b.codigo));
+  };
+
+  const getMovimientosByNegocio = (
+    negocioId = DEFAULT_NEGOCIO_ID
+  ): MovimientoTesoreria[] => {
+    return movimientosTesoreria
+      .filter((m) => (m.negocioId || DEFAULT_NEGOCIO_ID) === negocioId)
+      .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  };
+
+  const ensureCuentasNegocioEnEstado = (negocioId: string) => {
+    const yaTiene = cuentasTesoreria.some(
+      (c) => (c.negocioId || DEFAULT_NEGOCIO_ID) === negocioId
+    );
+    if (!yaTiene) {
+      const iniciales = buildCuentasInicialesNegocio(negocioId);
+      setCuentasTesoreria((prev) => [...prev, ...iniciales]);
+      if (isSupabaseConfigured()) {
+        supabase
+          .from('cuentas_tesoreria')
+          .upsert(iniciales.map(cuentaToRow))
+          .then(({ error }) => {
+            if (error) console.error('Error inicializando cuentas en Supabase:', error);
+          });
+      }
+      return iniciales;
+    }
+    return cuentasTesoreria.filter(
+      (c) => (c.negocioId || DEFAULT_NEGOCIO_ID) === negocioId
+    );
+  };
+
+  const agregarCuentaTesoreria = (
+    cuenta: Omit<CuentaTesoreria, 'id'>
+  ): CuentaTesoreria => {
+    const targetNegocioId = cuenta.negocioId || DEFAULT_NEGOCIO_ID;
+    const prevNegocio = ensureCuentasNegocioEnEstado(targetNegocioId);
+    const nueva: CuentaTesoreria = {
+      ...cuenta,
+      negocioId: targetNegocioId,
+      id: `cta-${targetNegocioId}-${Date.now()}`,
+    };
+    setCuentasTesoreria((prev) => {
+      const hasNeg = prev.some(
+        (c) => (c.negocioId || DEFAULT_NEGOCIO_ID) === targetNegocioId
+      );
+      return hasNeg ? [...prev, nueva] : [...prev, ...prevNegocio, nueva];
+    });
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('cuentas_tesoreria')
+        .insert(cuentaToRow(nueva))
+        .then(({ error }) => {
+          if (error) console.error('Error creando cuenta en Supabase:', error);
+        });
+    }
+    return nueva;
+  };
+
+  const editarCuentaTesoreria = (cuentaActualizada: CuentaTesoreria) => {
+    ensureCuentasNegocioEnEstado(cuentaActualizada.negocioId || DEFAULT_NEGOCIO_ID);
+    setCuentasTesoreria((prev) =>
+      prev.map((c) => (c.id === cuentaActualizada.id ? cuentaActualizada : c))
+    );
+    // Sincronizar nombre/código/grupo en movimientos existentes vinculados
+    setMovimientosTesoreria((prev) =>
+      prev.map((m) =>
+        m.cuentaId === cuentaActualizada.id
+          ? {
+              ...m,
+              cuentaCodigo: cuentaActualizada.codigo,
+              cuentaNombre: cuentaActualizada.nombre,
+              tipo: cuentaActualizada.tipo,
+              grupoResultado: cuentaActualizada.grupoResultado,
+            }
+          : m
+      )
+    );
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('cuentas_tesoreria')
+        .upsert(cuentaToRow(cuentaActualizada))
+        .then(({ error }) => {
+          if (error) console.error('Error editando cuenta en Supabase:', error);
+        });
+    }
+  };
+
+  const eliminarCuentaTesoreria = (id: string) => {
+    setCuentasTesoreria((prev) => prev.filter((c) => c.id !== id));
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('cuentas_tesoreria')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Error eliminando cuenta en Supabase:', error);
+        });
+    }
+  };
+
+  const agregarMovimientoTesoreria = (
+    mov: Omit<MovimientoTesoreria, 'id' | 'creadoEn'>
+  ): MovimientoTesoreria => {
+    const hoy = new Date().toISOString().split('T')[0];
+    const nuevo: MovimientoTesoreria = {
+      ...mov,
+      negocioId: mov.negocioId || DEFAULT_NEGOCIO_ID,
+      id: `MOV-${Date.now()}-${Math.floor(100 + Math.random() * 899)}`,
+      creadoEn: hoy,
+    };
+    setMovimientosTesoreria((prev) => [nuevo, ...prev]);
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('movimientos_tesoreria')
+        .insert(movimientoToRow(nuevo))
+        .then(({ error }) => {
+          if (error) console.error('Error guardando movimiento en Supabase:', error);
+        });
+    }
+    return nuevo;
+  };
+
+  const editarMovimientoTesoreria = (movActualizado: MovimientoTesoreria) => {
+    setMovimientosTesoreria((prev) =>
+      prev.map((m) => (m.id === movActualizado.id ? movActualizado : m))
+    );
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('movimientos_tesoreria')
+        .upsert(movimientoToRow(movActualizado))
+        .then(({ error }) => {
+          if (error) console.error('Error editando movimiento en Supabase:', error);
+        });
+    }
+  };
+
+  const eliminarMovimientoTesoreria = (id: string) => {
+    setMovimientosTesoreria((prev) => prev.filter((m) => m.id !== id));
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('movimientos_tesoreria')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Error eliminando movimiento en Supabase:', error);
+        });
+    }
+  };
+
+  const importarCobrosReservasATesoreria = (
+    negocioId = DEFAULT_NEGOCIO_ID
+  ): number => {
+    const cuentasNeg = ensureCuentasNegocioEnEstado(negocioId);
+    const yaImportadas = new Set(
+      movimientosTesoreria
+        .filter((m) => (m.negocioId || DEFAULT_NEGOCIO_ID) === negocioId && m.reservaId)
+        .map((m) => String(m.reservaId))
+    );
+
+    const ctaDeco =
+      cuentasNeg.find((c) => c.codigo === '4.1.01') ||
+      cuentasNeg.find((c) => c.tipo === 'ingreso') ||
+      CUENTAS_TESORERIA_INICIALES[0];
+    const ctaAudio = cuentasNeg.find((c) => c.codigo === '4.1.02') || ctaDeco;
+    const ctaRotura = cuentasNeg.find((c) => c.codigo === '4.2.01') || ctaDeco;
+
+    const reservasNeg = reservas.filter(
+      (r) =>
+        (r.negocioId || DEFAULT_NEGOCIO_ID) === negocioId &&
+        r.estado !== 'Pendiente' &&
+        !yaImportadas.has(r.id)
+    );
+
+    if (reservasNeg.length === 0) return 0;
+
+    const hoy = new Date().toISOString().split('T')[0];
+    const nuevosMovs: MovimientoTesoreria[] = [];
+
+    reservasNeg.forEach((r) => {
+      const montoCobrado = r.estado === 'Pagó 50%' ? r.sena50 : r.precioTotal;
+      if (montoCobrado <= 0) return;
+
+      const kit = kits.find((k) => k.id === r.kitId);
+      const cta = kit?.grupo === 'Audiovisual' ? ctaAudio : ctaDeco;
+
+      nuevosMovs.push({
+        id: `MOV-RES-${r.id}`,
+        negocioId,
+        fecha: r.creadoEn || r.fechaRetiro || hoy,
+        tipo: 'ingreso',
+        cuentaId: cta.id,
+        cuentaCodigo: cta.codigo,
+        cuentaNombre: cta.nombre,
+        grupoResultado: cta.grupoResultado,
+        concepto: `${
+          r.estado === 'Pagó 50%' ? 'Seña 50%' : 'Cobro total'
+        } ${r.kitNombre} - ${r.clienteNombre} (${r.id})`,
+        monto: montoCobrado,
+        metodoPago: r.metodoPago,
+        comprobanteRef: r.comprobanteNombre || r.id,
+        reservaId: r.id,
+        creadoEn: hoy,
+      });
+
+      if ((r.descuentoGarantia || 0) > 0) {
+        nuevosMovs.push({
+          id: `MOV-ROT-${r.id}`,
+          negocioId,
+          fecha: r.fechaDevolucion || hoy,
+          tipo: 'ingreso',
+          cuentaId: ctaRotura.id,
+          cuentaCodigo: ctaRotura.codigo,
+          cuentaNombre: ctaRotura.nombre,
+          grupoResultado: ctaRotura.grupoResultado,
+          concepto: `Retención garantía por daños - ${r.clienteNombre} (${r.id})`,
+          monto: r.descuentoGarantia || 0,
+          metodoPago: 'efectivo',
+          comprobanteRef: r.id,
+          reservaId: r.id,
+          creadoEn: hoy,
+        });
+      }
+    });
+
+    if (nuevosMovs.length > 0) {
+      setMovimientosTesoreria((prev) => [...nuevosMovs, ...prev]);
+      if (isSupabaseConfigured()) {
+        supabase
+          .from('movimientos_tesoreria')
+          .upsert(nuevosMovs.map(movimientoToRow))
+          .then(({ error }) => {
+            if (error) console.error('Error importando reservas a tesorería:', error);
+          });
+      }
+    }
+
+    return reservasNeg.length;
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1107,6 +1491,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         registrarPagoSuscripcion,
         recuperarPinNegocio,
         eliminarNegocio,
+        cuentasTesoreria,
+        movimientosTesoreria,
+        getCuentasByNegocio,
+        getMovimientosByNegocio,
+        agregarCuentaTesoreria,
+        editarCuentaTesoreria,
+        eliminarCuentaTesoreria,
+        agregarMovimientoTesoreria,
+        editarMovimientoTesoreria,
+        eliminarMovimientoTesoreria,
+        importarCobrosReservasATesoreria,
         esFechaOcupada,
         rangoTieneConflicto,
       }}
