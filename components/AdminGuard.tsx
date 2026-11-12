@@ -358,7 +358,7 @@ export default function AdminGuard({
 
   return (
     <div>
-      <div className="px-4 pt-3 flex items-center justify-between">
+      <div className="px-4 pt-3 flex items-center justify-between no-print">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-teal bg-teal-50 px-3 py-1 rounded-full">
           <ShieldCheck className="w-3.5 h-3.5" /> {badgeLabel}
         </span>

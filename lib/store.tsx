@@ -58,6 +58,8 @@ interface AppContextType {
   getKitsByNegocio: (negocioId?: string) => Kit[];
   getReservasByNegocio: (negocioId?: string) => Reserva[];
   actualizarEstadoReserva: (id: string, nuevoEstado: EstadoReserva) => void;
+  editarReserva: (reservaActualizada: Reserva) => void;
+  eliminarReserva: (id: string) => void;
   registrarDevolucion: (
     id: string,
     estadoDevolucion: EstadoDevolucion,
@@ -643,6 +645,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const editarReserva = (reservaActualizada: Reserva) => {
+    setReservas((prev) =>
+      prev.map((r) => (r.id === reservaActualizada.id ? reservaActualizada : r))
+    );
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('reservas')
+        .upsert(reservaToRow(reservaActualizada))
+        .then(({ error }) => {
+          if (error) console.error('Error editando reserva en Supabase:', error);
+        });
+    }
+  };
+
+  const eliminarReserva = (id: string) => {
+    setReservas((prev) => prev.filter((r) => r.id !== id));
+
+    if (isSupabaseConfigured()) {
+      supabase
+        .from('reservas')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Error eliminando reserva en Supabase:', error);
+        });
+    }
+  };
+
   const registrarDevolucion = (
     id: string,
     estadoDevolucion: EstadoDevolucion,
@@ -1058,6 +1089,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getKitsByNegocio,
         getReservasByNegocio,
         actualizarEstadoReserva,
+        editarReserva,
+        eliminarReserva,
         registrarDevolucion,
         toggleDisponibilidadKit,
         actualizarPrecioKit,

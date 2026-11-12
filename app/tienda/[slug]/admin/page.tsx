@@ -12,16 +12,12 @@ import {
   Wallet,
   Clock,
   CheckCircle2,
-  AlertTriangle,
-  Sparkles,
   Plus,
   Trash2,
   XCircle,
   ExternalLink,
   Upload,
   Pencil,
-  FileImage,
-  X,
   Palette,
   Mail,
   Eye,
@@ -33,14 +29,12 @@ import {
 import {
   Kit,
   formatGuaranies,
-  PRECIOS_ROTURA,
-  EstadoReserva,
-  Reserva,
 } from '@/lib/kits';
 import { PLANES_SAAS } from '@/lib/saas';
 import { uploadKitImage, uploadKitVideo } from '@/lib/media';
 import { useApp } from '@/lib/store';
 import StoreBrandingEditor from '@/components/StoreBrandingEditor';
+import AdminReservasManager from '@/components/AdminReservasManager';
 
 const FOTO_DEFAULT =
   'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=900&q=80';
@@ -52,8 +46,6 @@ export default function TiendaAdminPage() {
     negocios,
     getKitsByNegocio,
     getReservasByNegocio,
-    actualizarEstadoReserva,
-    registrarDevolucion,
     agregarKit,
     editarKit,
     toggleDisponibilidadKit,
@@ -75,13 +67,6 @@ export default function TiendaAdminPage() {
   const [recNuevoPin, setRecNuevoPin] = useState('');
   const [recSuccess, setRecSuccess] = useState('');
   const [tab, setTab] = useState<'reservas' | 'kits' | 'marca'>('reservas');
-
-  // Modales reservas
-  const [modalRotoReserva, setModalRotoReserva] = useState<Reserva | null>(null);
-  const [itemsSeleccionados, setItemsSeleccionados] = useState<string[]>([]);
-  const [comprobantePreview, setComprobantePreview] = useState<Reserva | null>(
-    null
-  );
 
   // Modal agregar / modificar kit
   const [modalKitOpen, setModalKitOpen] = useState(false);
@@ -507,21 +492,10 @@ export default function TiendaAdminPage() {
     setModalKitOpen(false);
   };
 
-  const toggleItemRoto = (id: string) => {
-    setItemsSeleccionados((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
-  const totalDescuentoRoto = itemsSeleccionados.reduce((acc, id) => {
-    const item = PRECIOS_ROTURA.find((p) => p.id === id);
-    return acc + (item ? item.precio : 0);
-  }, 0);
-
   return (
-    <main className="px-4 pt-4 pb-12 space-y-5">
+    <main className="px-4 pt-4 pb-12 space-y-5 print:p-0">
       {esSuperAdminSoporte && (
-        <div className="bg-gray-900 text-amber-200 rounded-2xl px-4 py-2.5 text-xs font-bold flex flex-wrap items-center justify-between gap-2 shadow">
+        <div className="bg-gray-900 text-amber-200 rounded-2xl px-4 py-2.5 text-xs font-bold flex flex-wrap items-center justify-between gap-2 shadow no-print">
           <span className="flex items-center gap-1.5">
             <Crown className="w-4 h-4 text-amber-400" />
             Modo Soporte / Prueba Super Admin • Podés configurar la tienda para el dueño
@@ -536,7 +510,7 @@ export default function TiendaAdminPage() {
       )}
 
       {/* Barra superior Admin Tienda */}
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-3xl p-4 shadow-card border border-pink-100">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-3xl p-4 shadow-card border border-pink-100 no-print">
         <div>
           <span className="text-[11px] font-extrabold uppercase text-brand-pink">
             Admin de {negocio.nombre} ({PLANES_SAAS[negocio.plan].nombre})
@@ -565,7 +539,7 @@ export default function TiendaAdminPage() {
       </div>
 
       {/* 5 Cards Dashboard de la Tienda */}
-      <section className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <section className="grid grid-cols-2 sm:grid-cols-5 gap-3 no-print">
         <div className="bg-white rounded-3xl p-3.5 shadow-card border border-pink-100">
           <div className="flex items-center justify-between text-brand-pink mb-1">
             <span className="text-[11px] font-bold text-gray-500">Reservas hoy</span>
@@ -608,7 +582,7 @@ export default function TiendaAdminPage() {
       </section>
 
       {/* Tabs Reservas / Mis Kits / Mi Marca & Cobros */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 no-print">
         <button
           type="button"
           onClick={() => setTab('reservas')}
@@ -646,107 +620,11 @@ export default function TiendaAdminPage() {
       </div>
 
       {tab === 'reservas' && (
-        <section className="bg-white rounded-3xl p-4 sm:p-5 shadow-card border border-pink-100 space-y-3">
-          <h2 className="font-extrabold text-gray-900 text-base">
-            Reservas de {negocio.nombre}
-          </h2>
-          {misReservas.length === 0 ? (
-            <p className="text-xs text-gray-500 py-6 text-center">
-              Todavía no recibiste reservas en esta tienda. Compartí el link{' '}
-              <code>/tienda/{slug}</code> con tus clientes para empezar.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {misReservas.map((r) => (
-                <div
-                  key={r.id}
-                  className="p-4 rounded-2xl bg-brand-bg border border-pink-100 space-y-2.5"
-                >
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-extrabold text-brand-pink">
-                        {r.id} • {r.estado}
-                      </span>
-                      <h3 className="font-extrabold text-gray-900 text-sm">
-                        {r.kitNombre}
-                      </h3>
-                      <p className="text-xs text-gray-600">
-                        {r.clienteNombre} • {r.clienteWhatsapp} • {r.fechaRetiro} →{' '}
-                        {r.fechaDevolucion}
-                      </p>
-                    </div>
-                    <div className="text-right text-xs">
-                      <p className="font-extrabold text-gray-900">
-                        {formatGuaranies(r.precioTotal)}
-                      </p>
-                      <p className="text-emerald-700 font-bold">
-                        Seña: {formatGuaranies(r.sena50)}
-                      </p>
-                      {r.comprobanteUrl && (
-                        <button
-                          type="button"
-                          onClick={() => setComprobantePreview(r)}
-                          className="mt-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-[11px]"
-                        >
-                          <FileImage className="w-3.5 h-3.5" />
-                          Ver Comprobante
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-pink-200/40">
-                    <div className="flex flex-wrap gap-1">
-                      {(
-                        ['Pendiente', 'Pagó 50%', 'Retirado', 'Devuelto'] as EstadoReserva[]
-                      ).map((est) => (
-                        <button
-                          key={est}
-                          type="button"
-                          onClick={() => actualizarEstadoReserva(r.id, est)}
-                          className={`px-2 py-1 rounded-lg text-[11px] font-bold ${
-                            r.estado === est
-                              ? 'bg-gray-900 text-white'
-                              : 'bg-white text-gray-600 border border-gray-200'
-                          }`}
-                        >
-                          {est}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => registrarDevolucion(r.id, 'OK', [])}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> OK
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setModalRotoReserva(r);
-                          setItemsSeleccionados(r.itemsRotos || []);
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1"
-                      >
-                        <AlertTriangle className="w-3.5 h-3.5" /> Roto
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => registrarDevolucion(r.id, 'Sucio', [])}
-                        className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold flex items-center gap-1"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" /> Sucio
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <AdminReservasManager
+          reservas={misReservas}
+          kits={misKits}
+          negocioNombre={negocio.nombre}
+        />
       )}
 
       {tab === 'kits' && (
@@ -933,125 +811,6 @@ export default function TiendaAdminPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Vista Previa Comprobante */}
-      {comprobantePreview && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-              <div>
-                <h3 className="font-extrabold text-gray-900 text-sm">
-                  Comprobante • {comprobantePreview.id}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  {comprobantePreview.clienteNombre} • Seña:{' '}
-                  {formatGuaranies(comprobantePreview.sena50)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setComprobantePreview(null)}
-                className="p-1.5 rounded-xl bg-gray-100 text-gray-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {comprobantePreview.comprobanteUrl?.startsWith('data:application/pdf') ||
-            comprobantePreview.comprobanteUrl?.endsWith('.pdf') ? (
-              <div className="p-5 bg-brand-bg rounded-2xl text-center space-y-2">
-                <p className="text-xs font-bold text-gray-700">
-                  Comprobante en PDF: {comprobantePreview.comprobanteNombre}
-                </p>
-                <a
-                  href={comprobantePreview.comprobanteUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-block px-4 py-2 rounded-xl bg-brand-pink text-white text-xs font-extrabold"
-                >
-                  Abrir PDF
-                </a>
-              </div>
-            ) : (
-              <img
-                src={comprobantePreview.comprobanteUrl}
-                alt="Comprobante"
-                className="w-full max-h-96 object-contain rounded-2xl bg-gray-100 border border-gray-200"
-              />
-            )}
-
-            <button
-              type="button"
-              onClick={() => setComprobantePreview(null)}
-              className="w-full py-3 rounded-2xl bg-gray-900 text-white font-bold text-xs"
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Reporte Roto */}
-      {modalRotoReserva && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4">
-            <h3 className="text-lg font-extrabold text-gray-900">
-              Descuento de Garantía por Rotura
-            </h3>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {PRECIOS_ROTURA.map((item) => (
-                <label
-                  key={item.id}
-                  className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 cursor-pointer text-xs font-bold"
-                >
-                  <span className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={itemsSeleccionados.includes(item.id)}
-                      onChange={() => toggleItemRoto(item.id)}
-                    />
-                    {item.nombre}
-                  </span>
-                  <span className="text-rose-600">
-                    - {formatGuaranies(item.precio)}
-                  </span>
-                </label>
-              ))}
-            </div>
-            <div className="p-3 rounded-2xl bg-brand-bg text-xs flex justify-between font-extrabold">
-              <span>Garantía a devolver:</span>
-              <span className="text-brand-teal">
-                {formatGuaranies(
-                  Math.max(0, modalRotoReserva.garantia - totalDescuentoRoto)
-                )}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setModalRotoReserva(null)}
-                className="py-3 rounded-2xl bg-gray-100 text-gray-700 font-bold text-xs"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  registrarDevolucion(
-                    modalRotoReserva.id,
-                    'Roto',
-                    itemsSeleccionados
-                  );
-                  setModalRotoReserva(null);
-                }}
-                className="py-3 rounded-2xl bg-rose-600 text-white font-extrabold text-xs"
-              >
-                Aplicar Descuento
-              </button>
-            </div>
           </div>
         </div>
       )}
